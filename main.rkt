@@ -3,6 +3,7 @@
 (require
   "lib.rkt"
   "place.rkt"
+  "grpc-op-batch.rkt"
   "buffer-reader.rkt"
   racket/format
   racket/port
@@ -53,20 +54,12 @@
     (define close-on-server (make-grpc-recv-close-on-server 
                               (malloc _int)))
 
-
-    (define ops (make-cvector _grpc-op 4))
-    (define op1 (cvector-ref ops 0))
-    (define op2 (cvector-ref ops 1))
-    (define op3 (cvector-ref ops 2))
-    (define op4 (cvector-ref ops 3))
-    (set-grpc-op-op! op1 'send-initial-metadata)
-    (set-grpc-send-initial-metadata-count! (union-ref (grpc-op-data op1) 0) 0)
-    (set-grpc-op-op! op2 'send-message)
-    (union-set! (grpc-op-data op2) 1 send-message-buffer)
-    (set-grpc-op-op! op3 'send-status-from-server)
-    (union-set! (grpc-op-data op3) 2 (make-grpc-send-status-from-server 0 #f 0 #f))
-    (set-grpc-op-op! op4 'recv-close-on-server)
-    (union-set! (grpc-op-data op4) 6 close-on-server)
+    (define ops
+      (grpc-op-batch
+        #:send-initial-metadata 0 #f
+        #:send-message send-message-buffer
+        #:send-status-from-server 0 #f 0 #f
+        #:recv-close-on-server close-on-server))
 
     (grpc-call-start-batch (ptr-ref call _pointer) ops (malloc-immobile-cell sema))
     (sync sema)
