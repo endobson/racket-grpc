@@ -21,13 +21,11 @@
 ;; TODO make this an enum
 (define _grpc-call-error _int)
 ;; TODO make this an enum
-(define _grpc-op-type _int)
-;; TODO make this an enum
 (define _grpc-status-code _int)
 (define _size_t _int64)
 
 
-(define-cstruct _grpc-metadata-array 
+(define-cstruct _grpc-metadata-array
       ([count _size_t]
        [capacity _size_t]
        [metadata _pointer]))
@@ -41,34 +39,44 @@
 ;; grpc_byte_buffer *send_message;
 (define _grpc-send-message _pointer)
 
-(define-cstruct _grpc-send-status-from-server 
+(define-cstruct _grpc-send-status-from-server
       ([trailing_metadata_count _size_t]
        [trailing_metadata _pointer]
        [status _grpc-status-code]
        [status_details _pointer]))
 
 ;; grpc_metadata_array *recv_initial_metadata;
-(define _grpc-recv_initial_metadata _grpc-metadata-array-pointer) 
+(define _grpc-recv_initial_metadata _grpc-metadata-array-pointer)
 ;; grpc_byte_buffer **recv_message;
-(define _grpc-recv_message _pointer) 
-(define-cstruct _grpc-recv_status_on_client 
+(define _grpc-recv_message _pointer)
+(define-cstruct _grpc-recv_status_on_client
       ([trailing_metadata _pointer]
        [status _pointer]
        [status_details _pointer]
        [status_details_capacity _pointer]))
 
-(define-cstruct _grpc-recv-close-on-server 
+(define-cstruct _grpc-recv-close-on-server
     ([cancelled _pointer]))
 
+(define _grpc-op-type
+  (_enum
+    '(send-initial-metadata
+      send-message
+      send-close-from-client
+      send-status-from-server
+      recv-initial-metadata
+      recv-message
+      recv-status-on-client
+      recv-close-on-server)))
 
 (define-cstruct _grpc-op ([op _grpc-op-type]
                           [data (_union
                                   _grpc-send-initial-metadata
                                   _grpc-send-message
-                                  _grpc-send-status-from-server 
+                                  _grpc-send-status-from-server
                                   _grpc-recv_initial_metadata
                                   _grpc-recv_message
-                                  _grpc-recv_status_on_client 
+                                  _grpc-recv_status_on_client
                                   _grpc-recv-close-on-server)]))
 
 
@@ -88,21 +96,22 @@
 (define grpc-call-start-batch
   (get-ffi-obj "grpc_call_start_batch" lib-grpc
     (_fun _grpc-call (ops : _cvector) (_size_t = (cvector-length ops)) _pointer -> _grpc-call-error)))
-                                                                   
-(define grpc-completion-queue-next 
+
+(define grpc-completion-queue-next
   (get-ffi-obj "grpc_completion_queue_next" lib-grpc
     (_fun _grpc-completion-queue _gpr-timespec -> _grpc-event)))
 
-(define grpc-completion-queue-shutdown 
+(define grpc-completion-queue-shutdown
+
   (get-ffi-obj "grpc_completion_queue_shutdown" lib-grpc
     (_fun _grpc-completion-queue -> _void)))
 
 
-(define gpr-now 
+(define gpr-now
   (get-ffi-obj "gpr_now" lib-grpc
     (_fun -> _gpr-timespec)))
 
-(define gpr-inf-future 
+(define gpr-inf-future
   (get-ffi-obj "gpr_inf_future" lib-grpc _gpr-timespec))
 
 
