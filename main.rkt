@@ -51,7 +51,8 @@
 
   (define sema (make-semaphore))
 
-
+  (define (server-fun input)
+    (port->bytes input))
 
   (let loop ()
     (grpc-server-request-call
@@ -71,7 +72,9 @@
     (grpc-call-start-batch (ptr-ref call _pointer) ops (malloc-immobile-cell sema))
     (sync sema)
 
-    (define send-message-slice (gpr-slice-from-copied-buffer #"\x08\x00\x10\x12"))
+    (define output (server-fun (grpc-buffer->input-port (ptr-ref payload _pointer))))
+
+    (define send-message-slice (gpr-slice-from-copied-buffer output))
     (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
 
     (define ops2
@@ -82,14 +85,4 @@
     (grpc-call-start-batch (ptr-ref call _pointer) ops2 (malloc-immobile-cell sema))
     (sync sema)
 
-
-
-
-    (loop))
-
-
-  )
-
-
-
-
+    (loop)))
