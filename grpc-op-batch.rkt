@@ -71,7 +71,7 @@
       #:with initialize
         #'(lambda (op)
             (set-grpc-op-op! op 'recv-close-on-server)
-            (union-set! (grpc-op-data op) 6 close-ptr)))))
+            (set-grpc-recv-close-on-server-cancelled! (union-ref (grpc-op-data op) 6) close-ptr)))))
 
 (define-syntax grpc-op-batch
   (syntax-parser

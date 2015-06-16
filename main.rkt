@@ -13,55 +13,73 @@
   ffi/unsafe/cvector
   racket/list)
 
+(define-cstruct _server-context
+  ([call _pointer]
+   [payload _pointer]
+   [details _grpc-call-details]
+   [metadata _grpc-metadata-array]
+   [cancelled _int]))
+
+
 (module+ main
   (define server (grpc-server-create #f))
   (define cq (start-completion-queue))
 
   (grpc-server-register-completion-queue server cq)
 
-  (define method-string "/grpc.testing.TestService/EmptyCall")
-  (define method (grpc-server-register-method server method-string #f))
+  ;(define method-string "/grpc.testing.TestService/EmptyCall")
+  ;(define method (grpc-server-register-method server method-string #f))
 
   (void (grpc-server-add-http2-port server "localhost:8000"))
 
   (grpc-server-start server)
 
-  (define call (malloc-immobile-cell #f))
-  (define payload (malloc-immobile-cell #f))
-  (define deadline (make-gpr-timespec 0 0))
-  (define details (make-grpc-call-details #f 0 #f 0 (make-gpr-timespec 0 0)))
+  (define ctx (cast (malloc _server-context 'raw) _pointer _server-context-pointer))
+
+  (define call (server-context-call-pointer ctx))
+  (set-server-context-call! ctx #f)
+  (define payload (server-context-payload-pointer ctx))
+  (set-server-context-payload! ctx #f)
+  (define details (server-context-details ctx))
+  (set-grpc-call-details-method! details #f)
+  (set-grpc-call-details-method-capacity! details 0)
+  (set-grpc-call-details-host! details #f)
+  (set-grpc-call-details-host-capacity! details 0)
+  (define deadline (grpc-call-details-deadline details))
+  (define metadata (server-context-metadata ctx))
+  (grpc-metadata-array-init metadata)
+
   (define sema (make-semaphore))
 
-  (define request-metadata (make-grpc-metadata-array 0 0 #f))
-  (grpc-metadata-array-init request-metadata)
 
 
   (let loop ()
-    (grpc-server-request-registered-call
+    (grpc-server-request-call
       server
-      method
       call
-      deadline
-      request-metadata
-      payload
+      details
+      metadata
       cq
       cq
       (malloc-immobile-cell sema))
     (sync sema)
 
-    (define send-message-slice (gpr-slice-from-copied-buffer #"\x08\x00\x10\x12"))
-    (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
-    (define close-on-server (make-grpc-recv-close-on-server 
-                              (malloc _int)))
-
     (define ops
       (grpc-op-batch
         #:send-initial-metadata 0 #f
+        #:recv-message payload))
+    (grpc-call-start-batch (ptr-ref call _pointer) ops (malloc-immobile-cell sema))
+    (sync sema)
+
+    (define send-message-slice (gpr-slice-from-copied-buffer #"\x08\x00\x10\x12"))
+    (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
+
+    (define ops2
+      (grpc-op-batch
         #:send-message send-message-buffer
         #:send-status-from-server 0 #f 0 #f
-        #:recv-close-on-server close-on-server))
-
-    (grpc-call-start-batch (ptr-ref call _pointer) ops (malloc-immobile-cell sema))
+        #:recv-close-on-server (server-context-cancelled-pointer ctx)))
+    (grpc-call-start-batch (ptr-ref call _pointer) ops2 (malloc-immobile-cell sema))
     (sync sema)
 
 
