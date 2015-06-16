@@ -63,9 +63,7 @@
   (case status
     [(0)
      (define recv-message-buffer (ptr-ref recv-message-buffer-ptr _pointer))
-     (void)
-     (write (port->bytes (grpc-buffer->input-port recv-message-buffer)))
-     (newline)]
+     (void)]
     [else
       (printf "Error ~a: ~a~n" status (ptr-ref recv-status_details _string))]))
   
@@ -75,6 +73,6 @@
 
   (for ([i (in-range 100)])
     (time
-      (for ([j (in-range 4000)])
+      (for ([j (in-range 1000)])
         (run cq)))
     (printf "RequestBatch ~a~n" i)))
