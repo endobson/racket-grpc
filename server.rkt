@@ -5,12 +5,9 @@
   "place.rkt"
   "grpc-op-batch.rkt"
   "buffer-reader.rkt"
-  racket/format
   racket/port
-  racket/place
+  racket/match
   ffi/unsafe
-  ffi/cvector
-  ffi/unsafe/cvector
   racket/list)
 
 (define-cstruct _server-context
@@ -20,19 +17,26 @@
    [metadata _grpc-metadata-array]
    [cancelled _int]))
 
+(struct server-config
+        (methods addresses))
 
-(module+ main
+(provide start-server server-config)
+
+(define (start-server config)
   (define server (grpc-server-create #f))
   (define cq (start-completion-queue))
 
   (grpc-server-register-completion-queue server cq)
-
-  ;(define method-string "/grpc.testing.TestService/EmptyCall")
-  ;(define method (grpc-server-register-method server method-string #f))
-
-  (void (grpc-server-add-http2-port server "localhost:8000"))
+  (for ([address (server-config-addresses config)])
+    (grpc-server-add-http2-port server address))
 
   (grpc-server-start server)
+
+  (define methods
+    (for/hash ([(k v) (in-hash (server-config-methods config))])
+      (values
+        (string->immutable-string k)
+        v)))
 
   (define ctx (cast (malloc _server-context 'raw) _pointer _server-context-pointer))
 
@@ -72,7 +76,13 @@
     (grpc-call-start-batch (ptr-ref call _pointer) ops (malloc-immobile-cell sema))
     (sync sema)
 
-    (define output (server-fun (grpc-buffer->input-port (ptr-ref payload _pointer))))
+    (define output
+      (match (hash-ref methods (grpc-call-details-method details) 'unimplemented)
+        ['unimplemented
+         ;; TODO(endobson) send back unimplemented status code]
+         #""]
+        [fun
+          (fun (grpc-buffer->input-port (ptr-ref payload _pointer)))]))
 
     (define send-message-slice (gpr-slice-from-copied-buffer output))
     (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
