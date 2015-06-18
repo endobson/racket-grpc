@@ -76,8 +76,9 @@
     (grpc-call-start-batch (ptr-ref call _pointer) ops (malloc-immobile-cell sema))
     (sync sema)
 
+    (define method (cast (grpc-call-details-method details) _pointer _string))
     (define output
-      (match (hash-ref methods (grpc-call-details-method details) 'unimplemented)
+      (match (hash-ref methods method 'unimplemented)
         ['unimplemented
          ;; TODO(endobson) send back unimplemented status code]
          #""]

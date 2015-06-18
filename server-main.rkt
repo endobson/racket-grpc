@@ -5,7 +5,10 @@
 
 (define config
   (server-config
-    (hash)
+    (hash
+      "/grpc.testing.TestService/EmptyCall"
+      (lambda (input)
+        #"EmptyCall"))
     (list
       "localhost:8000")))
 
