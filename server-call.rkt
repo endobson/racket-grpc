@@ -4,9 +4,15 @@
   "grpc-op-batch.rkt"
   "lib.rkt"
   "buffer-reader.rkt"
+  "async-channel.rkt"
   ffi/unsafe
-  racket/async-channel
+  racket/port
   racket/match)
+
+(provide
+  create-server-call
+  server-call-wait
+  server-call-recv-message-evt)
 
 (struct send-initial-metadata (metadata sema))
 (struct send-message (message sema))
@@ -17,38 +23,29 @@
   (define recv-message-channel (make-async-channel))
   (define send-channel (make-async-channel))
 
-  (thread
-    (lambda ()
-      (define payload-pointer (malloc _pointer 'raw))
-      (define cancelled-pointer (malloc _int 'raw))
-      (define sema (make-semaphore))
-      (let loop ()
-        (define call-error
-          (grpc-call-start-batch
-            call-pointer
-            (grpc-op-batch #:recv-message payload-pointer)
-            (malloc-immobile-cell sema)))
-        (unless (zero? call-error)
-          (error 'broken-call))
-        (sync sema)
-        (define payload (ptr-ref payload-pointer _pointer))
-        (when payload
-          (async-channel-put
-            recv-message-channel
-            (grpc-buffer->input-port payload))
-          (loop)))
-      (define call-error
-        (grpc-call-start-batch
-          call-pointer
-          (grpc-op-batch #:recv-close-on-server cancelled-pointer)
-          (malloc-immobile-cell sema)))
-      (unless (zero? call-error)
-        (error 'broken-call))
-      (unless (zero? (ptr-ref cancelled-pointer 'int))
-        (semaphore-post cancelled-sema))
-      (free payload-pointer)
-      (free cancelled-pointer)))
+  (define read-thread
+    (thread
+      (lambda ()
+        (define payload-pointer (malloc _pointer 'raw))
+        (define sema (make-semaphore))
+        (let loop ()
+          (define call-error
+            (grpc-call-start-batch
+              call-pointer
+              (grpc-op-batch #:recv-message payload-pointer)
+              (malloc-immobile-cell sema)))
+          (unless (zero? call-error)
+            (error 'broken-call "Receiving message ~a" call-error))
+          (sync sema)
+          (define payload (ptr-ref payload-pointer _pointer))
+          (when payload
+            (async-channel-put
+              recv-message-channel
+              (port->bytes (grpc-buffer->input-port payload)))
+            (loop)))
+        (free payload-pointer))))
 
+#;
   (thread
     (lambda ()
       (let loop ([state 'before-metadata])
@@ -60,7 +57,7 @@
                (grpc-op-batch #:send-initial-metadata 0 #f)
                (malloc-immobile-cell sema)))
            (unless (zero? call-error)
-             (error 'broken-call))
+             (error 'broken-call "Sending initial metadata ~a" call-error))
            (loop)]
           [(send-message message sema)
            (define call-error
@@ -69,7 +66,7 @@
                (grpc-op-batch #:send-message message)
                (malloc-immobile-cell sema)))
            (unless (zero? call-error)
-             (error 'broken-call))
+             (error 'broken-call "Sending message ~a" call-error))
            (loop)]
           [(send-status status metadata sema)
            (define call-error
@@ -78,24 +75,24 @@
                (grpc-op-batch #:send-status-from-server 0 #f 0 #f)
                (malloc-immobile-cell sema)))
            (unless (zero? call-error)
-             (error 'broken-call))]))))
+             (error 'broken-call "Sending status ~a" call-error)) ]))))
 
   (server-call (hash)
                deadline
                (semaphore-peek-evt cancelled-sema)
                (guard-evt (lambda () recv-message-channel))
-               send-channel))
-
-
+               send-channel
+               (thread-dead-evt read-thread)
+               always-evt))
 
 
 (struct server-call (client-metadata
                      deadline
                      cancelled-evt
                      recv-message-evt
-                     send-channel))
-(struct status (code message))
-(define status-ok (status 'ok ""))
+                     send-channel
+                     read-thread-finished-evt
+                     write-thread-finished-evt))
 
 
 (define (server-call-is-cancelled? call)
@@ -119,3 +116,6 @@
     (server-call-send-channel call)
     (send-status status metadata sema)))
 
+(define (server-call-wait call)
+  (sync (server-call-read-thread-finished-evt call))
+  (sync (server-call-write-thread-finished-evt call)))

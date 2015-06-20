@@ -3,6 +3,8 @@
 (require
   "lib.rkt"
   "place.rkt"
+  "server-call.rkt"
+  "timestamp.rkt"
   "grpc-op-batch.rkt"
   "buffer-reader.rkt"
   racket/port
@@ -70,28 +72,15 @@
       (malloc-immobile-cell sema))
     (sync sema)
 
-    (define recv-messages (make-async-channel))
-    (define reads-done
-      (thread-dead-evt
-        (thread
-          (lambda ()
-            (define read-sema (make-semaphore))
-            (let loop ()
-              (define call-error
-                (grpc-call-start-batch
-                  (ptr-ref call _pointer)
-                  (grpc-op-batch #:recv-message payload)
-                  (malloc-immobile-cell read-sema)))
-              (unless (zero? call-error)
-                (error 'read-thread "Error receiving message ~a" call-error))
-              (sync read-sema)
-              (define actual-payload (ptr-ref payload _pointer))
-              (when actual-payload
-                (async-channel-put
-                  recv-messages
-                  (port->bytes (grpc-buffer->input-port actual-payload)))
-                (loop)))))))
-    (define message (async-channel-get recv-messages))
+    (define server-call
+      (create-server-call
+        (timestamp 0 0)
+        (ptr-ref call _pointer)
+        cq))
+
+    (define message (sync (server-call-recv-message-evt server-call)))
+
+
 
 
     (define method (cast (grpc-call-details-method details) _pointer _string))
@@ -118,7 +107,7 @@
 
 
     (grpc-byte-buffer-destroy send-message-buffer)
+    (server-call-wait server-call)
     (grpc-call-destroy (ptr-ref call _pointer))
-    (sync reads-done)
 
     (loop)))
