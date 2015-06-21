@@ -71,7 +71,6 @@
 
     (define ops
       (grpc-op-batch
-        #:send-initial-metadata 0 #f
         #:recv-message payload))
     (grpc-call-start-batch (ptr-ref call _pointer) ops (malloc-immobile-cell sema))
     (sync sema)
@@ -91,6 +90,7 @@
 
     (define ops2
       (grpc-op-batch
+        #:send-initial-metadata 0 #f
         #:send-message send-message-buffer
         #:send-status-from-server 0 #f 0 #f
         #:recv-close-on-server (server-context-cancelled-pointer ctx)))
