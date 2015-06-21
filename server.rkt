@@ -6,6 +6,7 @@
   "grpc-op-batch.rkt"
   "buffer-reader.rkt"
   racket/port
+  racket/async-channel
   racket/match
   ffi/unsafe
   racket/list)
@@ -69,6 +70,7 @@
       (malloc-immobile-cell sema))
     (sync sema)
 
+    (define recv-messages (make-async-channel))
     (define reads-done
       (thread-dead-evt
         (thread
@@ -85,9 +87,11 @@
               (sync read-sema)
               (define actual-payload (ptr-ref payload _pointer))
               (when actual-payload
-                (port->bytes (grpc-buffer->input-port actual-payload))
+                (async-channel-put
+                  recv-messages
+                  (port->bytes (grpc-buffer->input-port actual-payload)))
                 (loop)))))))
-    (sync reads-done)
+    (define message (async-channel-get recv-messages))
 
 
     (define method (cast (grpc-call-details-method details) _pointer _string))
@@ -97,7 +101,7 @@
          ;; TODO(endobson) send back unimplemented status code]
          #""]
         [fun
-          (fun #"")]))
+          (fun message)]))
 
     (define send-message-slice (gpr-slice-from-copied-buffer output))
     (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
@@ -112,7 +116,9 @@
     (grpc-call-start-batch (ptr-ref call _pointer) ops2 (malloc-immobile-cell sema))
     (sync sema)
 
+
     (grpc-byte-buffer-destroy send-message-buffer)
     (grpc-call-destroy (ptr-ref call _pointer))
+    (sync reads-done)
 
     (loop)))
