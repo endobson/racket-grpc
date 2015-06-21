@@ -126,6 +126,10 @@
   (get-ffi-obj "grpc_raw_byte_buffer_create" lib-grpc
     (_fun _pointer _int -> _pointer)))
 
+(define grpc-byte-buffer-destroy
+  (get-ffi-obj "grpc_byte_buffer_destroy" lib-grpc
+    (_fun _pointer -> _void)))
+
 (define-cstruct _grpc-byte-buffer-reader
   ([buffer-in _pointer]
    [buffer-out _pointer]
@@ -207,6 +211,9 @@
       _pointer ;; tag
       -> _int)))
 
+(define grpc-call-destroy
+  (get-ffi-obj "grpc_call_destroy" lib-grpc
+    (_fun _pointer -> _void)))
 
 (define grpc-server-register-completion-queue
   (get-ffi-obj "grpc_server_register_completion_queue" lib-grpc

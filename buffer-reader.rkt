@@ -18,7 +18,8 @@
     (set! more-buffer (grpc-byte-buffer-reader-next reader slice))
     (set! location-in-slice 0)
     (when (zero? more-buffer)
-      (grpc-byte-buffer-reader-destroy reader)))
+      (grpc-byte-buffer-reader-destroy reader)
+      (grpc-byte-buffer-destroy buffer)))
 
   (read-next-slice!)
 

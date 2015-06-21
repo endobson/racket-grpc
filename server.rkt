@@ -83,10 +83,11 @@
          ;; TODO(endobson) send back unimplemented status code]
          #""]
         [fun
-          (fun (grpc-buffer->input-port (ptr-ref payload _pointer)))]))
+          (fun (port->bytes (grpc-buffer->input-port (ptr-ref payload _pointer))))]))
 
     (define send-message-slice (gpr-slice-from-copied-buffer output))
     (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
+    (gpr-slice-unref send-message-slice)
 
     (define ops2
       (grpc-op-batch
@@ -95,5 +96,8 @@
         #:recv-close-on-server (server-context-cancelled-pointer ctx)))
     (grpc-call-start-batch (ptr-ref call _pointer) ops2 (malloc-immobile-cell sema))
     (sync sema)
+
+    (grpc-byte-buffer-destroy send-message-buffer)
+    (grpc-call-destroy (ptr-ref call _pointer))
 
     (loop)))
