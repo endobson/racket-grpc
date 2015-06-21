@@ -69,11 +69,26 @@
       (malloc-immobile-cell sema))
     (sync sema)
 
-    (define ops
-      (grpc-op-batch
-        #:recv-message payload))
-    (grpc-call-start-batch (ptr-ref call _pointer) ops (malloc-immobile-cell sema))
-    (sync sema)
+    (define reads-done
+      (thread-dead-evt
+        (thread
+          (lambda ()
+            (define read-sema (make-semaphore))
+            (let loop ()
+              (define call-error
+                (grpc-call-start-batch
+                  (ptr-ref call _pointer)
+                  (grpc-op-batch #:recv-message payload)
+                  (malloc-immobile-cell read-sema)))
+              (unless (zero? call-error)
+                (error 'read-thread "Error receiving message ~a" call-error))
+              (sync read-sema)
+              (define actual-payload (ptr-ref payload _pointer))
+              (when actual-payload
+                (port->bytes (grpc-buffer->input-port actual-payload))
+                (loop)))))))
+    (sync reads-done)
+
 
     (define method (cast (grpc-call-details-method details) _pointer _string))
     (define output
@@ -82,7 +97,7 @@
          ;; TODO(endobson) send back unimplemented status code]
          #""]
         [fun
-          (fun (port->bytes (grpc-buffer->input-port (ptr-ref payload _pointer))))]))
+          (fun #"")]))
 
     (define send-message-slice (gpr-slice-from-copied-buffer output))
     (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
