@@ -57,17 +57,20 @@
   (define sema (make-semaphore))
 
   (grpc-call-start-batch call ops (malloc-immobile-cell sema))
-  (sync sema)
 
-  (define status (ptr-ref recv-status_code _int))
-  (case status
-    [(0)
-     (define recv-message-buffer (ptr-ref recv-message-buffer-ptr _pointer))
-     (grpc-byte-buffer-destroy recv-message-buffer)
-     (grpc-call-destroy call)
-     (void)]
-    [else
-      (printf "Error ~a: ~a~n" status (ptr-ref recv-status_details _string))]))
+
+  (handle-evt
+    sema
+    (lambda (_)
+      (define status (ptr-ref recv-status_code _int))
+      (case status
+        [(0)
+         (define recv-message-buffer (ptr-ref recv-message-buffer-ptr _pointer))
+         (grpc-byte-buffer-destroy recv-message-buffer)
+         (grpc-call-destroy call)
+         (void)]
+        [else
+          (printf "Error ~a: ~a~n" status (ptr-ref recv-status_details _string))]))))
 
 
 (module+ main
@@ -75,6 +78,10 @@
 
   (for ([i (in-range 100)])
     (time
-      (for ([j (in-range 1000)])
-        (run cq)))
+      (define results
+        (for/list ([j (in-range 1000)])
+          ;(printf "Request ~a~n" j)
+          (run cq)))
+      (for ([r (in-list results)])
+        (sync r)))
     (printf "RequestBatch ~a~n" i)))
