@@ -7,6 +7,7 @@
   "buffer-reader.rkt"
   racket/format
   racket/port
+  racket/async-channel
   racket/place
   ffi/unsafe
   ffi/cvector
@@ -76,12 +77,21 @@
 (module+ main
   (define cq (start-completion-queue))
 
+  (define responses (make-async-channel))
+
+  (define (request-thread)
+    (thread
+      (lambda ()
+        (for ([i (in-range 100)])
+          (async-channel-put
+            responses
+            (sync (run cq)))))))
+
+  (for ([i (in-range 1000)])
+    (request-thread))
+
   (for ([i (in-range 100)])
     (time
-      (define results
-        (for/list ([j (in-range 1000)])
-          ;(printf "Request ~a~n" j)
-          (run cq)))
-      (for ([r (in-list results)])
-        (sync r)))
+      (for ([j (in-range 1000)])
+        (sync responses)))
     (printf "RequestBatch ~a~n" i)))
