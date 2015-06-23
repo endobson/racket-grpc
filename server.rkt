@@ -44,7 +44,7 @@
 
   (define ctx (cast (malloc _server-context 'raw) _pointer _server-context-pointer))
 
-  (define call (server-context-call-pointer ctx))
+  (define call-pointer (server-context-call-pointer ctx))
   (set-server-context-call! ctx #f)
   (define payload (server-context-payload-pointer ctx))
   (set-server-context-payload! ctx #f)
@@ -65,7 +65,7 @@
   (let loop ()
     (grpc-server-request-call
       server
-      call
+      call-pointer
       details
       metadata
       cq
@@ -73,38 +73,34 @@
       (malloc-immobile-cell sema))
     (sync sema)
 
-    (define server-call
-      (create-server-call
-        (timestamp 0 0)
-        (ptr-ref call _pointer)
-        cq))
-
-    (define message (sync (server-call-recv-message-evt server-call)))
-
-
-
-
     (define method (cast (grpc-call-details-method details) _pointer _string))
-    (define output
-      (match (hash-ref methods method 'unimplemented)
-        ['unimplemented
-         ;; TODO(endobson) send back unimplemented status code]
-         #""]
-        [fun
-          (fun message)]))
+    (define call (ptr-ref call-pointer _pointer))
 
-    (define send-message-slice (gpr-slice-from-copied-buffer output))
-    (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
-    (gpr-slice-unref send-message-slice)
+    (thread
+      (lambda ()
+        (define server-call (create-server-call (timestamp 0 0) call cq))
+        (define message (sync (server-call-recv-message-evt server-call)))
 
-    (server-call-send-initial-metadata server-call (hash))
-    (server-call-send-message server-call send-message-buffer)
-    (server-call-send-status server-call ok-status (hash))
+        (define output
+          (match (hash-ref methods method 'unimplemented)
+            ['unimplemented
+             ;; TODO(endobson) send back unimplemented status code]
+             #""]
+            [fun
+              (fun message)]))
+
+        (define send-message-slice (gpr-slice-from-copied-buffer output))
+        (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
+        (gpr-slice-unref send-message-slice)
+
+        (server-call-send-initial-metadata server-call (hash))
+        (server-call-send-message server-call send-message-buffer)
+        (server-call-send-status server-call ok-status (hash))
 
 
 
-    (grpc-byte-buffer-destroy send-message-buffer)
-    (server-call-wait server-call)
-    (grpc-call-destroy (ptr-ref call _pointer))
+        (grpc-byte-buffer-destroy send-message-buffer)
+        (server-call-wait server-call)
+        (grpc-call-destroy call)))
 
     (loop)))
