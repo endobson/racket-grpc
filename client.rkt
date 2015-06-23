@@ -10,11 +10,11 @@
 
 (provide send-request)
 
-(define (send-request cq chan)
+(define (send-request cq chan method)
   (define deadline (gpr-now))
   (set-gpr-timespec-tv_sec! deadline (+ (gpr-timespec-tv_sec deadline) 1))
 
-  (define call (grpc-channel-create-call chan cq "/grpc.testing.TestService/EmptyCall" "localhost" deadline))
+  (define call (grpc-channel-create-call chan cq method "localhost" deadline))
 
 
   (define recv-metadata (make-grpc-metadata-array 0 0 #f))

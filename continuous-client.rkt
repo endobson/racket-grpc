@@ -20,7 +20,7 @@
         (for ([i (in-range 100)])
           (async-channel-put
             responses
-            (sync (send-request cq chan)))))))
+            (sync (send-request cq chan "/grpc.testing.TestService/EmptyCall")))))))
 
   (for ([i (in-range 1000)])
     (request-thread))
