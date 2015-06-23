@@ -4,15 +4,18 @@
   "grpc-op-batch.rkt"
   "lib.rkt"
   "buffer-reader.rkt"
-  "async-channel.rkt"
   ffi/unsafe
+  racket/async-channel
   racket/port
   racket/match)
 
 (provide
   create-server-call
   server-call-wait
-  server-call-recv-message-evt)
+  server-call-recv-message-evt
+  server-call-send-initial-metadata
+  server-call-send-message
+  server-call-send-status)
 
 (struct send-initial-metadata (metadata sema))
 (struct send-message (message sema))
@@ -21,7 +24,7 @@
 (define (create-server-call deadline call-pointer cq) 
   (define cancelled-sema (make-semaphore))
   (define recv-message-channel (make-async-channel))
-  (define send-channel (make-async-channel))
+  (define send-message-channel (make-async-channel))
 
   (define read-thread
     (thread
@@ -45,45 +48,45 @@
             (loop)))
         (free payload-pointer))))
 
-#;
-  (thread
-    (lambda ()
-      (let loop ([state 'before-metadata])
-        (match (sync recv-message-channel)
-          [(send-initial-metadata metadata sema)
-           (define call-error
-             (grpc-call-start-batch
-               call-pointer
-               (grpc-op-batch #:send-initial-metadata 0 #f)
-               (malloc-immobile-cell sema)))
-           (unless (zero? call-error)
-             (error 'broken-call "Sending initial metadata ~a" call-error))
-           (loop)]
-          [(send-message message sema)
-           (define call-error
-             (grpc-call-start-batch
-               call-pointer
-               (grpc-op-batch #:send-message message)
-               (malloc-immobile-cell sema)))
-           (unless (zero? call-error)
-             (error 'broken-call "Sending message ~a" call-error))
-           (loop)]
-          [(send-status status metadata sema)
-           (define call-error
-             (grpc-call-start-batch
-               call-pointer
-               (grpc-op-batch #:send-status-from-server 0 #f 0 #f)
-               (malloc-immobile-cell sema)))
-           (unless (zero? call-error)
-             (error 'broken-call "Sending status ~a" call-error)) ]))))
+  (define write-thread
+    (thread
+      (lambda ()
+        (let loop ([state 'before-metadata])
+          (match (sync send-message-channel)
+            [(send-initial-metadata metadata sema)
+             (define call-error
+               (grpc-call-start-batch
+                 call-pointer
+                 (grpc-op-batch #:send-initial-metadata 0 #f)
+                 (malloc-immobile-cell sema)))
+             (unless (zero? call-error)
+               (error 'broken-call "Sending initial metadata ~a" call-error))
+             (loop 'after-metadata)]
+            [(send-message message sema)
+             (define call-error
+               (grpc-call-start-batch
+                 call-pointer
+                 (grpc-op-batch #:send-message message)
+                 (malloc-immobile-cell sema)))
+             (unless (zero? call-error)
+               (error 'broken-call "Sending message ~a" call-error))
+             (loop 'after-metadata)]
+            [(send-status status metadata sema)
+             (define call-error
+               (grpc-call-start-batch
+                 call-pointer
+                 (grpc-op-batch #:send-status-from-server 0 #f 0 #f)
+                 (malloc-immobile-cell sema)))
+             (unless (zero? call-error)
+               (error 'broken-call "Sending status ~a" call-error))])))))
 
   (server-call (hash)
                deadline
                (semaphore-peek-evt cancelled-sema)
                (guard-evt (lambda () recv-message-channel))
-               send-channel
+               send-message-channel
                (thread-dead-evt read-thread)
-               always-evt))
+               (thread-dead-evt write-thread)))
 
 
 (struct server-call (client-metadata
@@ -102,19 +105,22 @@
   (define sema (make-semaphore))
   (async-channel-put
     (server-call-send-channel call)
-    (send-message message sema)))
+    (send-message message sema))
+  (sync sema))
 
 (define (server-call-send-initial-metadata call metadata)
   (define sema (make-semaphore))
   (async-channel-put
     (server-call-send-channel call)
-    (send-initial-metadata metadata sema)))
+    (send-initial-metadata metadata sema))
+  (sync sema))
 
 (define (server-call-send-status call status metadata)
   (define sema (make-semaphore))
   (async-channel-put
     (server-call-send-channel call)
-    (send-status status metadata sema)))
+    (send-status status metadata sema))
+  (sync sema))
 
 (define (server-call-wait call)
   (sync (server-call-read-thread-finished-evt call))

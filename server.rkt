@@ -7,6 +7,7 @@
   "timestamp.rkt"
   "grpc-op-batch.rkt"
   "buffer-reader.rkt"
+  "status.rkt"
   racket/port
   racket/async-channel
   racket/match
@@ -96,14 +97,10 @@
     (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
     (gpr-slice-unref send-message-slice)
 
-    (define ops2
-      (grpc-op-batch
-        #:send-initial-metadata 0 #f
-        #:send-message send-message-buffer
-        #:send-status-from-server 0 #f 0 #f
-        #:recv-close-on-server (server-context-cancelled-pointer ctx)))
-    (grpc-call-start-batch (ptr-ref call _pointer) ops2 (malloc-immobile-cell sema))
-    (sync sema)
+    (server-call-send-initial-metadata server-call (hash))
+    (server-call-send-message server-call send-message-buffer)
+    (server-call-send-status server-call ok-status (hash))
+
 
 
     (grpc-byte-buffer-destroy send-message-buffer)
