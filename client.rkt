@@ -2,21 +2,15 @@
 
 (require
   "lib.rkt"
-  "place.rkt"
   "grpc-op-batch.rkt"
   "buffer-reader.rkt"
-  racket/format
   racket/port
-  racket/async-channel
-  racket/place
   ffi/unsafe
-  ffi/cvector
   racket/list)
 
+(provide send-request)
 
-(define chan (grpc-channel-create "localhost:8000" #f))
-
-(define (run cq)
+(define (send-request cq chan)
   (define deadline (gpr-now))
   (set-gpr-timespec-tv_sec! deadline (+ (gpr-timespec-tv_sec deadline) 1))
 
@@ -74,24 +68,4 @@
           (printf "Error ~a: ~a~n" status (ptr-ref recv-status_details _string))]))))
 
 
-(module+ main
-  (define cq (start-completion-queue))
 
-  (define responses (make-async-channel))
-
-  (define (request-thread)
-    (thread
-      (lambda ()
-        (for ([i (in-range 100)])
-          (async-channel-put
-            responses
-            (sync (run cq)))))))
-
-  (for ([i (in-range 1000)])
-    (request-thread))
-
-  (for ([i (in-range 100)])
-    (time
-      (for ([j (in-range 1000)])
-        (sync responses)))
-    (printf "RequestBatch ~a~n" i)))
