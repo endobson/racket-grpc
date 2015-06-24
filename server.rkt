@@ -78,11 +78,11 @@
 
     (thread
       (lambda ()
-        (define server-call (create-server-call (timestamp 0 0) call cq))
+        (define server-call (create-server-call (timestamp 0 0) call method cq))
         (define message (sync (server-call-recv-message-evt server-call)))
 
         (define output
-          (match (hash-ref methods method 'unimplemented)
+          (match (hash-ref methods (server-call-method server-call) 'unimplemented)
             ['unimplemented
              ;; TODO(endobson) send back unimplemented status code]
              #""]

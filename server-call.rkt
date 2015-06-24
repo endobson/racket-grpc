@@ -12,6 +12,7 @@
 (provide
   create-server-call
   server-call-wait
+  server-call-method
   server-call-recv-message-evt
   server-call-send-initial-metadata
   server-call-send-message
@@ -21,7 +22,7 @@
 (struct send-message (message sema))
 (struct send-status (status metadata sema))
 
-(define (create-server-call deadline call-pointer cq) 
+(define (create-server-call deadline call-pointer method cq)
   (define cancelled-sema (make-semaphore))
   (define recv-message-channel (make-async-channel))
   (define send-message-channel (make-async-channel))
@@ -82,6 +83,7 @@
 
   (server-call (hash)
                deadline
+               method
                (semaphore-peek-evt cancelled-sema)
                (guard-evt (lambda () recv-message-channel))
                send-message-channel
@@ -91,6 +93,7 @@
 
 (struct server-call (client-metadata
                      deadline
+                     method
                      cancelled-evt
                      recv-message-evt
                      send-channel
