@@ -108,11 +108,16 @@
                (error 'broken-call "Sending initial metadata ~a" call-error))
              (loop 'after-metadata)]
             [(send-message message sema)
+             (define send-message-slice (gpr-slice-from-copied-buffer message))
+             (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
+             (gpr-slice-unref send-message-slice)
+
              (define call-error
                (grpc-call-start-batch
                  grpc-call
-                 (grpc-op-batch #:send-message message)
+                 (grpc-op-batch #:send-message send-message-buffer)
                  (malloc-immobile-cell sema)))
+             (grpc-byte-buffer-destroy send-message-buffer)
              (unless (zero? call-error)
                (error 'broken-call "Sending message ~a" call-error))
              (loop 'after-metadata)]

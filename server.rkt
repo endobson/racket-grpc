@@ -55,17 +55,11 @@
             [fun
               (fun message)]))
 
-        (define send-message-slice (gpr-slice-from-copied-buffer output))
-        (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
-        (gpr-slice-unref send-message-slice)
 
         (server-call-send-initial-metadata server-call (hash))
-        (server-call-send-message server-call send-message-buffer)
+        (server-call-send-message server-call output)
         (server-call-send-status server-call ok-status (hash))
 
-
-
-        (grpc-byte-buffer-destroy send-message-buffer)
         (server-call-wait server-call)))
 
     (loop)))
