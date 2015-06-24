@@ -22,7 +22,7 @@
 (struct send-message (message sema))
 (struct send-status (status metadata sema))
 
-(define (create-server-call deadline call-pointer method cq)
+(define (create-server-call deadline grpc-call method cq)
   (define cancelled-sema (make-semaphore))
   (define recv-message-channel (make-async-channel))
   (define send-message-channel (make-async-channel))
@@ -35,7 +35,7 @@
         (let loop ()
           (define call-error
             (grpc-call-start-batch
-              call-pointer
+              grpc-call
               (grpc-op-batch #:recv-message payload-pointer)
               (malloc-immobile-cell sema)))
           (unless (zero? call-error)
@@ -57,7 +57,7 @@
             [(send-initial-metadata metadata sema)
              (define call-error
                (grpc-call-start-batch
-                 call-pointer
+                 grpc-call
                  (grpc-op-batch #:send-initial-metadata 0 #f)
                  (malloc-immobile-cell sema)))
              (unless (zero? call-error)
@@ -66,7 +66,7 @@
             [(send-message message sema)
              (define call-error
                (grpc-call-start-batch
-                 call-pointer
+                 grpc-call
                  (grpc-op-batch #:send-message message)
                  (malloc-immobile-cell sema)))
              (unless (zero? call-error)
@@ -75,7 +75,7 @@
             [(send-status status metadata sema)
              (define call-error
                (grpc-call-start-batch
-                 call-pointer
+                 grpc-call
                  (grpc-op-batch #:send-status-from-server 0 #f 0 #f)
                  (malloc-immobile-cell sema)))
              (unless (zero? call-error)
@@ -84,6 +84,7 @@
   (server-call (hash)
                deadline
                method
+               grpc-call
                (semaphore-peek-evt cancelled-sema)
                (guard-evt (lambda () recv-message-channel))
                send-message-channel
@@ -94,6 +95,7 @@
 (struct server-call (client-metadata
                      deadline
                      method
+                     grpc-call
                      cancelled-evt
                      recv-message-evt
                      send-channel
@@ -127,4 +129,5 @@
 
 (define (server-call-wait call)
   (sync (server-call-read-thread-finished-evt call))
-  (sync (server-call-write-thread-finished-evt call)))
+  (sync (server-call-write-thread-finished-evt call))
+  (grpc-call-destroy (server-call-grpc-call call)))

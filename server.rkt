@@ -100,7 +100,6 @@
 
 
         (grpc-byte-buffer-destroy send-message-buffer)
-        (server-call-wait server-call)
-        (grpc-call-destroy call)))
+        (server-call-wait server-call)))
 
     (loop)))
