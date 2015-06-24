@@ -14,13 +14,6 @@
   ffi/unsafe
   racket/list)
 
-(define-cstruct _server-context
-  ([call _pointer]
-   [payload _pointer]
-   [details _grpc-call-details]
-   [metadata _grpc-metadata-array]
-   [cancelled _int]))
-
 (struct server-config
         (methods addresses))
 
@@ -42,43 +35,16 @@
         (string->immutable-string k)
         v)))
 
-  (define ctx (cast (malloc _server-context 'raw) _pointer _server-context-pointer))
 
-  (define call-pointer (server-context-call-pointer ctx))
-  (set-server-context-call! ctx #f)
-  (define payload (server-context-payload-pointer ctx))
-  (set-server-context-payload! ctx #f)
-  (define details (server-context-details ctx))
-  (set-grpc-call-details-method! details #f)
-  (set-grpc-call-details-method-capacity! details 0)
-  (set-grpc-call-details-host! details #f)
-  (set-grpc-call-details-host-capacity! details 0)
-  (define deadline (grpc-call-details-deadline details))
-  (define metadata (server-context-metadata ctx))
-  (grpc-metadata-array-init metadata)
-
-  (define sema (make-semaphore))
 
   (define (server-fun input)
     (port->bytes input))
 
   (let loop ()
-    (grpc-server-request-call
-      server
-      call-pointer
-      details
-      metadata
-      cq
-      cq
-      (malloc-immobile-cell sema))
-    (sync sema)
-
-    (define method (cast (grpc-call-details-method details) _pointer _string))
-    (define call (ptr-ref call-pointer _pointer))
+    (define server-call (request-server-call server cq))
 
     (thread
       (lambda ()
-        (define server-call (create-server-call (timestamp 0 0) call method cq))
         (define message (sync (server-call-recv-message-evt server-call)))
 
         (define output
