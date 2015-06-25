@@ -55,10 +55,7 @@
             [fun
               (fun message)]))
 
-
-        (server-call-send-initial-metadata server-call (hash))
-        (server-call-send-message server-call output)
-        (server-call-send-status server-call ok-status (hash))
+        (sync (server-call-send-batch server-call))
 
         (server-call-wait server-call)))
 

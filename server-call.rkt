@@ -17,11 +17,13 @@
   server-call-recv-message-evt
   server-call-send-initial-metadata
   server-call-send-message
+  server-call-send-batch
   server-call-send-status)
 
 (struct send-initial-metadata (metadata sema))
 (struct send-message (message sema))
 (struct send-status (status metadata sema))
+(struct send-batch (ops sema))
 
 (define-cstruct _server-context
   ([call _pointer]
@@ -121,6 +123,15 @@
              (unless (zero? call-error)
                (error 'broken-call "Sending message ~a" call-error))
              (loop 'after-metadata)]
+            [(send-batch ops sema)
+             (define call-error
+               (grpc-call-start-batch
+                 grpc-call
+                 ops
+                 (malloc-immobile-cell sema)))
+             (unless (zero? call-error)
+               (error 'broken-call "Sending batch ~a" call-error))
+             (loop 'after-metadata)]
             [(send-status status metadata sema)
              (define call-error
                (grpc-call-start-batch
@@ -160,21 +171,39 @@
   (async-channel-put
     (server-call-send-channel call)
     (send-message message sema))
-  (sync sema))
+  (semaphore-peek-evt sema))
 
 (define (server-call-send-initial-metadata call metadata)
   (define sema (make-semaphore))
   (async-channel-put
     (server-call-send-channel call)
     (send-initial-metadata metadata sema))
-  (sync sema))
+  (semaphore-peek-evt sema))
 
 (define (server-call-send-status call status metadata)
   (define sema (make-semaphore))
   (async-channel-put
     (server-call-send-channel call)
     (send-status status metadata sema))
-  (sync sema))
+  (semaphore-peek-evt sema))
+
+(define (server-call-send-batch call)
+  (define sema (make-semaphore))
+
+  (define send-message-slice (gpr-slice-from-copied-buffer #""))
+  (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
+  (gpr-slice-unref send-message-slice)
+  (async-channel-put
+    (server-call-send-channel call)
+    (send-batch
+      (grpc-op-batch #:send-initial-metadata 0 #f
+                     #:send-message send-message-buffer
+                     #:send-status-from-server 0 #f 0 #f)
+      sema))
+  (semaphore-peek-evt sema))
+
+
+
 
 (define (server-call-wait call)
   (sync (server-call-read-thread-finished-evt call))
