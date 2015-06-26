@@ -5,6 +5,7 @@
   "lib.rkt"
   "buffer-reader.rkt"
   "timestamp.rkt"
+  "return-box.rkt"
   ffi/unsafe
   racket/async-channel
   racket/port
@@ -20,10 +21,10 @@
   server-call-send-batch
   server-call-send-status)
 
-(struct send-initial-metadata (metadata sema))
-(struct send-message (message sema))
-(struct send-status (status metadata sema))
-(struct send-batch (ops sema))
+(struct send-initial-metadata (metadata sema rb))
+(struct send-message (message sema rb))
+(struct send-status (status metadata sema rb))
+(struct send-batch (ops sema rb))
 
 (define-cstruct _server-context
   ([call _pointer]
@@ -100,46 +101,38 @@
       (lambda ()
         (let loop ([state 'before-metadata])
           (match (sync send-message-channel)
-            [(send-initial-metadata metadata sema)
-             (define call-error
+            [(send-initial-metadata metadata sema rb)
+             (set-return-box! rb 
                (grpc-call-start-batch
                  grpc-call
                  (grpc-op-batch #:send-initial-metadata 0 #f)
                  (malloc-immobile-cell sema)))
-             (unless (zero? call-error)
-               (error 'broken-call "Sending initial metadata ~a" call-error))
              (loop 'after-metadata)]
-            [(send-message message sema)
+            [(send-message message sema rb)
              (define send-message-slice (gpr-slice-from-copied-buffer message))
              (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
              (gpr-slice-unref send-message-slice)
 
-             (define call-error
+             (set-return-box! rb 
                (grpc-call-start-batch
                  grpc-call
                  (grpc-op-batch #:send-message send-message-buffer)
                  (malloc-immobile-cell sema)))
              (grpc-byte-buffer-destroy send-message-buffer)
-             (unless (zero? call-error)
-               (error 'broken-call "Sending message ~a" call-error))
              (loop 'after-metadata)]
-            [(send-batch ops sema)
-             (define call-error
+            [(send-batch ops sema rb)
+             (set-return-box! rb 
                (grpc-call-start-batch
                  grpc-call
                  ops
                  (malloc-immobile-cell sema)))
-             (unless (zero? call-error)
-               (error 'broken-call "Sending batch ~a" call-error))
              (loop 'after-metadata)]
-            [(send-status status metadata sema)
-             (define call-error
+            [(send-status status metadata sema rb)
+             (set-return-box! rb 
                (grpc-call-start-batch
                  grpc-call
                  (grpc-op-batch #:send-status-from-server 0 #f 0 #f)
-                 (malloc-immobile-cell sema)))
-             (unless (zero? call-error)
-               (error 'broken-call "Sending status ~a" call-error))])))))
+                 (malloc-immobile-cell sema)))])))))
 
   (server-call (hash)
                deadline
@@ -168,27 +161,34 @@
 
 (define (server-call-send-message call message)
   (define sema (make-semaphore))
+  (define rb (make-return-box))
   (async-channel-put
     (server-call-send-channel call)
-    (send-message message sema))
+    (send-message message sema rb))
+  (sync rb)
   (semaphore-peek-evt sema))
 
 (define (server-call-send-initial-metadata call metadata)
   (define sema (make-semaphore))
+  (define rb (make-return-box))
   (async-channel-put
     (server-call-send-channel call)
-    (send-initial-metadata metadata sema))
+    (send-initial-metadata metadata sema rb))
+  (sync rb)
   (semaphore-peek-evt sema))
 
 (define (server-call-send-status call status metadata)
   (define sema (make-semaphore))
+  (define rb (make-return-box))
   (async-channel-put
     (server-call-send-channel call)
-    (send-status status metadata sema))
+    (send-status status metadata sema rb))
+  (sync rb)
   (semaphore-peek-evt sema))
 
 (define (server-call-send-batch call)
   (define sema (make-semaphore))
+  (define rb (make-return-box))
 
   (define send-message-slice (gpr-slice-from-copied-buffer #""))
   (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
@@ -199,7 +199,11 @@
       (grpc-op-batch #:send-initial-metadata 0 #f
                      #:send-message send-message-buffer
                      #:send-status-from-server 0 #f 0 #f)
-      sema))
+      sema
+      rb))
+  (sync rb)
+  (grpc-byte-buffer-destroy send-message-buffer)
+
   (semaphore-peek-evt sema))
 
 
