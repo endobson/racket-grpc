@@ -9,12 +9,13 @@
 
   "lib.rkt"
   ffi/unsafe
-  ffi/unsafe/cvector)
+  ffi/unsafe/cvector
+  racket/list)
 
 (provide grpc-op-batch)
 
 (begin-for-syntax
-  (define-splicing-syntax-class op^
+  (define-splicing-syntax-class base-op^
     #:attributes (initialize)
     (pattern
       (~seq #:send-initial-metadata count metadata)
@@ -71,14 +72,28 @@
       #:with initialize
         #'(lambda (op)
             (set-grpc-op-op! op 'recv-close-on-server)
-            (set-grpc-recv-close-on-server-cancelled! (union-ref (grpc-op-data op) 6) close-ptr)))))
+            (set-grpc-recv-close-on-server-cancelled! (union-ref (grpc-op-data op) 6) close-ptr))))
+
+  (define-splicing-syntax-class op^
+    #:attributes (test initialize)
+    (pattern :base-op^
+      #:with test #'#t)
+    (pattern
+      (~seq #:cond test :base-op^))))
+
 
 (define-syntax grpc-op-batch
   (syntax-parser
     [(_ ops:op^ ...)
      (define num-ops (syntax-length #'(ops ...)))
-     (define/with-syntax (indices ...) (build-list num-ops values))
+     (define/with-syntax (tests ...) (generate-temporaries #'(ops.test ...)))
      #`(let ()
-         (define ops-vector (make-cvector _grpc-op #,num-ops))
-         (ops.initialize (cvector-ref ops-vector indices)) ...
+         (define tests ops.test) ...
+         (define ops-length (count values (list tests ...)))
+
+         (define index 0)
+         (define ops-vector (make-cvector _grpc-op ops-length))
+         (when tests
+            (ops.initialize (cvector-ref ops-vector index))
+            (set! index (add1 index))) ...
          ops-vector)]))

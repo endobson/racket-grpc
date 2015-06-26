@@ -201,7 +201,8 @@
                      #:send-status-from-server 0 #f 0 #f)
       sema
       rb))
-  (sync rb)
+  (unless (zero? (sync rb))
+    (error 'server-call-send-batch "Bad status code"))
   (grpc-byte-buffer-destroy send-message-buffer)
 
   (semaphore-peek-evt sema))
