@@ -97,12 +97,17 @@
         (let loop ([state 'before-metadata])
           (match (sync send-message-channel)
             [(send-data initial-metadata message status trailing-metadata sema rb)
-             (unless (hash-empty? initial-metadata)
+             (unless (or (not initial-metadata) (hash-empty? initial-metadata))
                (error 'nyi))
-             (unless (equal? status ok-status)
+             (unless (or (not status) (equal? status ok-status))
                (error 'nyi))
-             (unless (hash-empty? trailing-metadata)
+             (unless (or (not trailing-metadata) (hash-empty? trailing-metadata))
                (error 'nyi))
+
+             (define send-initial-metadata
+               (or initial-metadata
+                   (and (eq? state 'before-metadata) (hash))))
+
              (define send-message-buffer
                (and message
                  (let ([send-message-slice (gpr-slice-from-copied-buffer message)])
@@ -114,9 +119,9 @@
                (grpc-call-start-batch
                  grpc-call
                  (grpc-op-batch
-                   #:send-initial-metadata 0 #f
-                   #:send-message send-message-buffer
-                   #:send-status-from-server 0 #f 0 #f)
+                   #:cond send-initial-metadata #:send-initial-metadata 0 #f
+                   #:cond send-message-buffer #:send-message send-message-buffer
+                   #:cond status #:send-status-from-server 0 #f 0 #f)
                  (malloc-immobile-cell sema)))
              (when send-message-buffer
                (grpc-byte-buffer-destroy send-message-buffer))

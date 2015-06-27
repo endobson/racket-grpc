@@ -56,10 +56,8 @@
               (fun message)]))
 
         (sync (server-call-send server-call
-                #:initial-metadata (hash)
                 #:message #"response"
-                #:status ok-status
-                #:trailing-metadata (hash)))
+                #:status ok-status))
 
         (server-call-wait server-call)))
 
