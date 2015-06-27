@@ -8,6 +8,7 @@
   "return-box.rkt"
   "status.rkt"
   ffi/unsafe
+  racket/promise
   racket/async-channel
   racket/port
   racket/match)
@@ -19,7 +20,7 @@
   server-call-recv-message-evt
   server-call-send)
 
-(struct send-data (initial-metadata message status trailing-metadata sema rb))
+(struct send-data (initial-metadata message status trailing-metadata rb))
 
 (define-cstruct _server-context
   ([call _pointer]
@@ -75,14 +76,10 @@
         (define payload-pointer (malloc _pointer 'raw))
         (define sema (make-semaphore))
         (let loop ()
-          (define call-error
-            (grpc-call-start-batch
+          (sync
+            (grpc-call-start-batch*
               grpc-call
-              (grpc-op-batch #:recv-message payload-pointer)
-              (malloc-immobile-cell sema)))
-          (unless (zero? call-error)
-            (error 'broken-call "Receiving message ~a" call-error))
-          (sync sema)
+              (grpc-op-batch #:recv-message payload-pointer)))
           (define payload (ptr-ref payload-pointer _pointer))
           (when payload
             (async-channel-put
@@ -96,7 +93,7 @@
       (lambda ()
         (let loop ([state 'before-metadata])
           (match (sync send-message-channel)
-            [(send-data initial-metadata message status trailing-metadata sema rb)
+            [(send-data initial-metadata message status trailing-metadata rb)
              (unless (or (not initial-metadata) (hash-empty? initial-metadata))
                (error 'nyi))
              (unless (or (not status) (equal? status ok-status))
@@ -116,13 +113,13 @@
                      (gpr-slice-unref send-message-slice)))))
 
              (set-return-box! rb 
-               (grpc-call-start-batch
-                 grpc-call
-                 (grpc-op-batch
-                   #:cond send-initial-metadata #:send-initial-metadata 0 #f
-                   #:cond send-message-buffer #:send-message send-message-buffer
-                   #:cond status #:send-status-from-server 0 #f 0 #f)
-                 (malloc-immobile-cell sema)))
+               (delay/strict
+                 (grpc-call-start-batch*
+                   grpc-call
+                   (grpc-op-batch
+                     #:cond send-initial-metadata #:send-initial-metadata 0 #f
+                     #:cond send-message-buffer #:send-message send-message-buffer
+                     #:cond status #:send-status-from-server 0 #f 0 #f))))
              (when send-message-buffer
                (grpc-byte-buffer-destroy send-message-buffer))
              (unless status
@@ -158,19 +155,12 @@
           #:message [message #f]
           #:status [status #f]
           #:trailing-metadata [trailing-metadata #f])
-  (define sema (make-semaphore))
   (define rb (make-return-box))
 
   (async-channel-put
     (server-call-send-channel call)
-    (send-data initial-metadata message status trailing-metadata sema rb))
-  (unless (zero? (sync rb))
-    (error 'server-call-send-ops "Bad status code"))
-  (semaphore-peek-evt sema))
-
-
-
-
+    (send-data initial-metadata message status trailing-metadata rb))
+  (sync rb))
 
 (define (server-call-wait call)
   (sync (server-call-read-thread-finished-evt call))

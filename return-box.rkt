@@ -1,5 +1,8 @@
 #lang racket/base
 
+(require
+  racket/promise)
+
 (provide
   make-return-box
   return-box?
@@ -11,7 +14,7 @@
       (wrap-evt
         (semaphore-peek-evt (return-box-sema b))
         (lambda (_)
-          (return-box-v b)))))
+          (force (return-box-v b))))))
 (define (make-return-box)
   (return-box (make-semaphore) #f))
 (define (set-return-box! b v)
