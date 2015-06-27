@@ -6,6 +6,6 @@
   status-message
   status?)
 
-(struct status (code message))
+(struct status (code message) #:transparent)
 
 (define ok-status (status 'ok ""))
