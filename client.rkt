@@ -11,6 +11,14 @@
 
 (provide send-request)
 
+
+(define-cstruct _recv-status
+  ([trailers _grpc-metadata-array]
+   [code _int]
+   [details _string]
+   [details-capacity _size_t]))
+
+
 (define (send-request cq chan method)
   (define deadline (gpr-now))
   (set-gpr-timespec-tv_sec! deadline (+ (gpr-timespec-tv_sec deadline) 1))
@@ -18,21 +26,24 @@
   (define call (grpc-channel-create-call chan cq method "localhost" deadline))
 
 
-  (define recv-metadata (make-grpc-metadata-array 0 0 #f))
+  (define recv-metadata (cast (malloc _grpc-metadata-array 'raw) _pointer _grpc-metadata-array-pointer))
   (grpc-metadata-array-init recv-metadata)
 
   (define send-message-slice (gpr-slice-from-copied-buffer #"\x08\x00\x10\x12"))
   (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
-  (define recv-trailing-metadata (make-grpc-metadata-array 0 0 #f))
-  (grpc-metadata-array-init recv-trailing-metadata)
-  (define recv-status_code (malloc _int 'raw))
-  (ptr-set! recv-status_code _int 0)
-  (define recv-status_details (malloc _pointer 'raw))
-  (ptr-set! recv-status_details _pointer #f)
 
-  (define recv-status_details_capacity (malloc _size_t 'raw))
-  (ptr-set! recv-status_details_capacity _size_t 0)
-  (define recv-status (make-grpc-recv_status_on_client recv-trailing-metadata recv-status_code recv-status_details recv-status_details_capacity))
+  (define recv-status (cast (malloc _recv-status 'raw) _pointer _recv-status-pointer))
+  (grpc-metadata-array-init (recv-status-trailers recv-status))
+  (set-recv-status-code! recv-status 0)
+  (set-recv-status-details! recv-status #f)
+  (set-recv-status-details-capacity! recv-status 0)
+
+  (define grpc-recv-status
+    (make-grpc-recv_status_on_client
+      (recv-status-trailers-pointer recv-status)
+      (recv-status-code-pointer recv-status)
+      (recv-status-details-pointer recv-status)
+      (recv-status-details-capacity-pointer recv-status)))
 
   (sync
     (grpc-call-start-batch* call
@@ -59,22 +70,22 @@
               recv-message-channel
               (port->bytes (grpc-buffer->input-port payload)))
             (loop)))
+        (free payload-pointer)
         (sync
           (grpc-call-start-batch* call
-            (grpc-op-batch #:recv-status-on-client recv-status)))
-        (free payload-pointer))))
+            (grpc-op-batch #:recv-status-on-client grpc-recv-status))))))
 
 
   (handle-evt
     (thread-dead-evt read-thread)
     (lambda (_)
-      (define status (ptr-ref recv-status_code _int))
+      (define status (recv-status-code recv-status))
       (case status
         [(0)
          (grpc-call-destroy call)
          (void)]
         [else
-          (printf "Error ~a: ~a~n" status (ptr-ref recv-status_details _string))]))))
+          (printf "Error ~a: ~a~n" (recv-status-details recv-status))]))))
 
 
 
