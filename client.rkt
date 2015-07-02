@@ -4,6 +4,7 @@
   "lib.rkt"
   "grpc-op-batch.rkt"
   "buffer-reader.rkt"
+  "malloc-util.rkt"
   racket/async-channel
   racket/port
   ffi/unsafe
@@ -26,13 +27,13 @@
   (define call (grpc-channel-create-call chan cq method "localhost" deadline))
 
 
-  (define recv-metadata (cast (malloc _grpc-metadata-array 'raw) _pointer _grpc-metadata-array-pointer))
+  (define recv-metadata (malloc-struct _grpc-metadata-array))
   (grpc-metadata-array-init recv-metadata)
 
   (define send-message-slice (gpr-slice-from-copied-buffer #"\x08\x00\x10\x12"))
   (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
 
-  (define recv-status (cast (malloc _recv-status 'raw) _pointer _recv-status-pointer))
+  (define recv-status (malloc-struct _recv-status))
   (grpc-metadata-array-init (recv-status-trailers recv-status))
   (set-recv-status-code! recv-status 0)
   (set-recv-status-details! recv-status #f)
@@ -58,19 +59,18 @@
   (define read-thread
     (thread
       (lambda ()
-        (define payload-pointer (malloc _pointer 'raw))
-        (define sema (make-semaphore))
-        (let loop ()
-          (sync
-            (grpc-call-start-batch* call
-              (grpc-op-batch #:recv-message payload-pointer)))
-          (define payload (ptr-ref payload-pointer _pointer))
-          (when payload
-            (async-channel-put
-              recv-message-channel
-              (port->bytes (grpc-buffer->input-port payload)))
-            (loop)))
-        (free payload-pointer)
+        (call-with-malloc _pointer
+          (λ (payload-pointer)
+            (let loop ()
+              (sync
+                (grpc-call-start-batch* call
+                  (grpc-op-batch #:recv-message payload-pointer)))
+              (define payload (ptr-ref payload-pointer _pointer))
+              (when payload
+                (async-channel-put
+                  recv-message-channel
+                  (port->bytes (grpc-buffer->input-port payload)))
+                (loop)))))
         (sync
           (grpc-call-start-batch* call
             (grpc-op-batch #:recv-status-on-client grpc-recv-status))))))

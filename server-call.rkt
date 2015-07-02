@@ -7,6 +7,7 @@
   "timestamp.rkt"
   "return-box.rkt"
   "status.rkt"
+  "malloc-util.rkt"
   ffi/unsafe
   racket/promise
   racket/async-channel
@@ -31,7 +32,7 @@
 
 
 (define (request-server-call server cq)
-  (define ctx (cast (malloc _server-context 'raw) _pointer _server-context-pointer))
+  (define ctx (malloc-struct _server-context))
 
   (define call-pointer (server-context-call-pointer ctx))
   (set-server-context-call! ctx #f)
@@ -73,20 +74,19 @@
   (define read-thread
     (thread
       (lambda ()
-        (define payload-pointer (malloc _pointer 'raw))
-        (define sema (make-semaphore))
-        (let loop ()
-          (sync
-            (grpc-call-start-batch*
-              grpc-call
-              (grpc-op-batch #:recv-message payload-pointer)))
-          (define payload (ptr-ref payload-pointer _pointer))
-          (when payload
-            (async-channel-put
-              recv-message-channel
-              (port->bytes (grpc-buffer->input-port payload)))
-            (loop)))
-        (free payload-pointer))))
+        (call-with-malloc _pointer
+          (λ (payload-pointer)
+            (let loop ()
+              (sync
+                (grpc-call-start-batch*
+                  grpc-call
+                  (grpc-op-batch #:recv-message payload-pointer)))
+              (define payload (ptr-ref payload-pointer _pointer))
+              (when payload
+                (async-channel-put
+                  recv-message-channel
+                  (port->bytes (grpc-buffer->input-port payload)))
+                (loop))))))))
 
   (define write-thread
     (thread
