@@ -121,6 +121,10 @@
   (get-ffi-obj "grpc_metadata_array_init" lib-grpc
     (_fun _grpc-metadata-array-pointer -> _void)))
 
+(define grpc-metadata-array-destroy
+  (get-ffi-obj "grpc_metadata_array_destroy" lib-grpc
+    (_fun _grpc-metadata-array-pointer -> _void)))
+
 
 (define grpc-raw-byte-buffer-create
   (get-ffi-obj "grpc_raw_byte_buffer_create" lib-grpc

@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require
-  "../client.rkt"
+  "../client-call.rkt"
   "../lib.rkt"
   "../place.rkt")
 
@@ -10,4 +10,4 @@
 
   (define cq (start-completion-queue))
 
-  (sync (send-request cq chan "/grpc.testing.TestService/Echo")))
+  (sync (client-call-run (make-client-call chan "/grpc.testing.TestService/Echo" cq))))
