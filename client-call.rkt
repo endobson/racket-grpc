@@ -7,6 +7,7 @@
   "buffer-reader.rkt"
   racket/async-channel
   racket/port
+  racket/match
   ffi/unsafe
   )
 
@@ -14,6 +15,7 @@
 (provide
   make-client-call
   client-call-send-message
+  client-call-recv-message
   client-call-run)
 
 (define (make-client-call chan method cq)
@@ -30,9 +32,9 @@
 
 
 
-  (client-call call))
+  (client-call call recv-message-channel))
 
-(struct client-call (call))
+(struct client-call (call recv-message-channel))
 
 
 (define-cstruct _recv-status
@@ -55,24 +57,47 @@
                  #:send-close-from-client
                  #:recv-initial-metadata recv-metadata))))))))
 
-(define (client-call-run client-call)
-  (define call (client-call-call client-call))
-
-  (define recv-message-channel (make-async-channel))
+(define (client-call-recv-message client-call)
+  (sync (client-call-recv-message-channel client-call)))
 
 
-  (define recv-status (malloc-struct _recv-status))
-  (grpc-metadata-array-init (recv-status-trailers recv-status))
-  (set-recv-status-code! recv-status 0)
-  (set-recv-status-details! recv-status #f)
-  (set-recv-status-details-capacity! recv-status 0)
+(define (client-call-run ccall)
+  (match-define (client-call call recv-message-channel) ccall)
 
-  (define grpc-recv-status
-    (make-grpc-recv_status_on_client
-      (recv-status-trailers-pointer recv-status)
-      (recv-status-code-pointer recv-status)
-      (recv-status-details-pointer recv-status)
-      (recv-status-details-capacity-pointer recv-status)))
+  (define status-channel (make-async-channel))
+
+
+
+
+
+    
+  (define (handle-recv-status)
+    (define recv-status (malloc-struct _recv-status))
+    (grpc-metadata-array-init (recv-status-trailers recv-status))
+    (set-recv-status-code! recv-status 0)
+    (set-recv-status-details! recv-status #f)
+    (set-recv-status-details-capacity! recv-status 0)
+
+
+    (define grpc-recv-status
+      (make-grpc-recv_status_on_client
+        (recv-status-trailers-pointer recv-status)
+        (recv-status-code-pointer recv-status)
+        (recv-status-details-pointer recv-status)
+        (recv-status-details-capacity-pointer recv-status)))
+
+
+    (sync
+      (grpc-call-start-batch* call
+        (grpc-op-batch #:recv-status-on-client grpc-recv-status)))
+    (async-channel-put status-channel
+        (list
+          (recv-status-code recv-status)
+          (recv-status-details recv-status)))
+    (free recv-status))
+
+
+
 
   (define read-thread
     (thread
@@ -89,19 +114,17 @@
                   recv-message-channel
                   (port->bytes (grpc-buffer->input-port payload)))
                 (loop)))))
-        (sync
-          (grpc-call-start-batch* call
-            (grpc-op-batch #:recv-status-on-client grpc-recv-status))))))
+        (handle-recv-status))))
 
 
   (handle-evt
-    (thread-dead-evt read-thread)
-    (lambda (_)
-      (define status (recv-status-code recv-status))
+    status-channel
+    (lambda (msg)
+      (match-define (list status details) msg)
       (case status
         [(0)
          (grpc-call-destroy call)
          (void)]
         [else
-          (printf "Error ~a: ~a~n" (recv-status-details recv-status))]))))
+          (printf "Error ~a: ~a~n" status details)]))))
 
