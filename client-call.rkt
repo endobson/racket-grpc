@@ -13,6 +13,7 @@
 
 (provide
   make-client-call
+  client-call-send-message
   client-call-run)
 
 (define (make-client-call chan method cq)
@@ -40,27 +41,38 @@
    [details _string]
    [details-capacity _size_t]))
 
+(define (client-call-send-message client-call bytes)
+  (define call (client-call-call client-call))
+  (call-with-malloc-grpc-metadata-array
+    (λ (recv-metadata)
+      (call-with-malloc-grpc-byte-buffer bytes
+        (λ (send-message-buffer)
+          (sync
+            (grpc-call-start-batch* call 
+              (grpc-op-batch
+                 #:send-initial-metadata 0 #f
+                 #:send-message send-message-buffer
+                 #:send-close-from-client
+                 #:recv-initial-metadata recv-metadata))))))))
+
 (define (client-call-run client-call)
   (define call (client-call-call client-call))
-  (define recv-metadata (malloc-struct _grpc-metadata-array))
-  (grpc-metadata-array-init recv-metadata)
-
-  (define send-message-slice (gpr-slice-from-copied-buffer #"\x08\x00\x10\x12"))
-  (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
-
-  (sync
-    (grpc-call-start-batch* call 
-      (grpc-op-batch
-         #:send-initial-metadata 0 #f
-         #:send-message send-message-buffer
-         #:send-close-from-client
-         #:recv-initial-metadata recv-metadata)))
-
-  (grpc-metadata-array-destroy recv-metadata)
-  (grpc-byte-buffer-destroy send-message-buffer)
-
 
   (define recv-message-channel (make-async-channel))
+
+
+  (define recv-status (malloc-struct _recv-status))
+  (grpc-metadata-array-init (recv-status-trailers recv-status))
+  (set-recv-status-code! recv-status 0)
+  (set-recv-status-details! recv-status #f)
+  (set-recv-status-details-capacity! recv-status 0)
+
+  (define grpc-recv-status
+    (make-grpc-recv_status_on_client
+      (recv-status-trailers-pointer recv-status)
+      (recv-status-code-pointer recv-status)
+      (recv-status-details-pointer recv-status)
+      (recv-status-details-capacity-pointer recv-status)))
 
   (define read-thread
     (thread
@@ -80,20 +92,6 @@
         (sync
           (grpc-call-start-batch* call
             (grpc-op-batch #:recv-status-on-client grpc-recv-status))))))
-
-
-  (define recv-status (malloc-struct _recv-status))
-  (grpc-metadata-array-init (recv-status-trailers recv-status))
-  (set-recv-status-code! recv-status 0)
-  (set-recv-status-details! recv-status #f)
-  (set-recv-status-details-capacity! recv-status 0)
-
-  (define grpc-recv-status
-    (make-grpc-recv_status_on_client
-      (recv-status-trailers-pointer recv-status)
-      (recv-status-code-pointer recv-status)
-      (recv-status-details-pointer recv-status)
-      (recv-status-details-capacity-pointer recv-status)))
 
 
   (handle-evt
