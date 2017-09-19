@@ -4,7 +4,6 @@
   (for-syntax
     racket/base
     racket/syntax
-    unstable/syntax
     syntax/parse)
 
   "lib.rkt"
@@ -87,7 +86,7 @@
 (define-syntax grpc-op-batch
   (syntax-parser
     [(_ ops:op^ ...)
-     (define num-ops (syntax-length #'(ops ...)))
+     (define num-ops (length (syntax->list #'(ops ...))))
      (define/with-syntax (tests ...) (generate-temporaries #'(ops.test ...)))
      #`(let ()
          (define tests ops.test) ...

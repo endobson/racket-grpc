@@ -80,6 +80,8 @@
 
 
     (define grpc-recv-status
+      (error 'pointer "Not implemented")
+      #;
       (make-grpc-recv_status_on_client
         (recv-status-trailers-pointer recv-status)
         (recv-status-code-pointer recv-status)

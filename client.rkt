@@ -39,7 +39,10 @@
   (set-recv-status-details! recv-status #f)
   (set-recv-status-details-capacity! recv-status 0)
 
+  ;; TODO This needs pointers
   (define grpc-recv-status
+    (error 'pointers "Not yet implemented")
+    #;
     (make-grpc-recv_status_on_client
       (recv-status-trailers-pointer recv-status)
       (recv-status-code-pointer recv-status)

@@ -34,9 +34,9 @@
 (define (request-server-call server cq)
   (define ctx (malloc-struct _server-context))
 
-  (define call-pointer (server-context-call-pointer ctx))
+  (define call-pointer (error 'pointer "Not implemented") #;(server-context-call-pointer ctx))
   (set-server-context-call! ctx #f)
-  (define payload (server-context-payload-pointer ctx))
+  (define payload (error 'pointer "Not implemented") #;(server-context-payload-pointer ctx))
   (set-server-context-payload! ctx #f)
   (define details (server-context-details ctx))
   (set-grpc-call-details-method! details #f)
