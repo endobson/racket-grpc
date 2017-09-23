@@ -2,7 +2,7 @@
 
 (require
   "../client-call.rkt"
-  "../lib.rkt"
+  "../ffi/lib.rkt"
   "../place.rkt")
 
 (module+ main

@@ -2,7 +2,7 @@
 
 (require
   ffi/unsafe
-  "lib.rkt")
+  "ffi/lib.rkt")
 
 (provide start-completion-queue)
 

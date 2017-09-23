@@ -6,7 +6,7 @@
     racket/syntax
     syntax/parse)
 
-  "lib.rkt"
+  "ffi/lib.rkt"
   ffi/unsafe
   ffi/unsafe/cvector
   racket/list)

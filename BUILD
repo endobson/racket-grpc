@@ -13,7 +13,7 @@ racket_library(
     name = "buffer-reader",
     srcs = ["buffer-reader.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
     ],
 )
 
@@ -21,7 +21,7 @@ racket_library(
     name = "client-call",
     srcs = ["client-call.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
         ":grpc-op-batch",
         ":malloc-util",
         ":buffer-reader",
@@ -32,7 +32,7 @@ racket_library(
     name = "client",
     srcs = ["client.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
         ":grpc-op-batch",
         ":malloc-util",
         ":buffer-reader",
@@ -43,7 +43,7 @@ racket_library(
     name = "continuous-client",
     srcs = ["continuous-client.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
         ":client",
         ":place",
     ],
@@ -53,23 +53,15 @@ racket_library(
     name = "grpc-op-batch",
     srcs = ["grpc-op-batch.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
     ],
-)
-
-racket_library(
-    name = "lib",
-    srcs = ["lib.rkt"],
-    data = [
-        "//:libgrpc_unsecure.so",
-    ]
 )
 
 racket_library(
     name = "malloc-util",
     srcs = ["malloc-util.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
     ],
 )
 
@@ -77,7 +69,7 @@ racket_library(
     name = "place",
     srcs = ["place.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
     ],
 )
 
@@ -85,7 +77,7 @@ racket_library(
     name = "return-box",
     srcs = ["return-box.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
     ],
 )
 
@@ -94,7 +86,7 @@ racket_library(
     srcs = ["serial-client.rkt"],
     deps = [
         ":client",
-        ":lib",
+        "//ffi:lib",
         ":place",
     ],
 )
@@ -104,7 +96,7 @@ racket_library(
     srcs = ["server-call.rkt"],
     deps = [
         ":grpc-op-batch",
-        ":lib",
+        "//ffi:lib",
         ":buffer-reader",
         ":timestamp",
         ":return-box",
@@ -125,7 +117,7 @@ racket_library(
     name = "server",
     srcs = ["server.rkt"],
     deps = [
-        ":lib",
+        "//ffi:lib",
         ":place",
         ":server-call",
         ":timestamp",
@@ -145,8 +137,3 @@ racket_library(
     srcs = ["timestamp.rkt"],
 )
 
-cc_binary(
-  name = "libgrpc_unsecure.so",
-  deps = ["@grpc//:grpc_unsecure"],
-  linkshared = 1
-)

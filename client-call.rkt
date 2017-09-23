@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require
-  "lib.rkt"
+  "ffi/lib.rkt"
   "grpc-op-batch.rkt"
   "malloc-util.rkt"
   "buffer-reader.rkt"
