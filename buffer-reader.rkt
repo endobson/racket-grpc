@@ -44,7 +44,7 @@
           (memcpy bytes 0 slice-start location-in-slice amount-to-read)
           (set! location-in-slice (+ location-in-slice amount-to-read))
           (when (= location-in-slice slice-length)
-            (gpr-slice-unref slice)
+            (grpc-slice-unref slice)
             (read-next-slice!))
           amount-to-read]))
     #f

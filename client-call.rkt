@@ -125,7 +125,7 @@
       (match-define (list status details) msg)
       (case status
         [(0)
-         (grpc-call-destroy call)
+         (grpc-call-unref call)
          (void)]
         [else
           (printf "Error ~a: ~a~n" status details)]))))

@@ -2,6 +2,7 @@
 
 (require
   racket/format
+  racket/runtime-path
   racket/place
   ffi/unsafe
   ffi/cvector
@@ -9,7 +10,10 @@
   racket/list)
 (provide (all-defined-out))
 
-(define lib-grpc (ffi-lib "libgrpc"))
+(define-runtime-path lib-grpc-path "./libgrpc_unsecure.so")
+(define lib-grpc (ffi-lib lib-grpc-path))
+
+
 
 ((get-ffi-obj "grpc_init" lib-grpc (_fun -> _void)))
 
@@ -157,20 +161,20 @@
    [bytes _pointer]
    [length _size_t]))
 
-(define gpr-slice-from-copied-buffer
-  (get-ffi-obj "gpr_slice_from_copied_buffer" lib-grpc
+(define grpc-slice-from-copied-buffer
+  (get-ffi-obj "grpc_slice_from_copied_buffer" lib-grpc
     (_fun (b : _bytes) (_size_t = (bytes-length b)) -> _gpr-slice)))
 
-(define gpr-slice-unref
-  (get-ffi-obj "gpr_slice_unref" lib-grpc
+(define grpc-slice-unref
+  (get-ffi-obj "grpc_slice_unref" lib-grpc
     (_fun _gpr-slice -> _void)))
 
 (define grpc-server-create
   (get-ffi-obj "grpc_server_create" lib-grpc
     (_fun _pointer -> _pointer)))
 
-(define grpc-server-add-http2-port
-  (get-ffi-obj "grpc_server_add_http2_port" lib-grpc
+(define grpc-server-add-insecure-http2-port
+  (get-ffi-obj "grpc_server_add_insecure_http2_port" lib-grpc
     (_fun _pointer _string -> _int)))
 
 (define grpc-server-start
@@ -215,8 +219,8 @@
       _pointer ;; tag
       -> _int)))
 
-(define grpc-call-destroy
-  (get-ffi-obj "grpc_call_destroy" lib-grpc
+(define grpc-call-unref
+  (get-ffi-obj "grpc_call_unref" lib-grpc
     (_fun _pointer -> _void)))
 
 (define grpc-server-register-completion-queue

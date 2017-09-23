@@ -43,8 +43,8 @@
       (grpc-metadata-array-destroy metadata))))
 
 (define (call-with-malloc-grpc-byte-buffer bytes fun)
-  (define slice (gpr-slice-from-copied-buffer bytes))
+  (define slice (grpc-slice-from-copied-buffer bytes))
   (define buffer (grpc-raw-byte-buffer-create slice 1))
-  (gpr-slice-unref slice)
+  (grpc-slice-unref slice)
   (fun buffer)
   (grpc-byte-buffer-destroy buffer))

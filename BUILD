@@ -60,6 +60,9 @@ racket_library(
 racket_library(
     name = "lib",
     srcs = ["lib.rkt"],
+    data = [
+        "//:libgrpc_unsecure.so",
+    ]
 )
 
 racket_library(
@@ -142,3 +145,8 @@ racket_library(
     srcs = ["timestamp.rkt"],
 )
 
+cc_binary(
+  name = "libgrpc_unsecure.so",
+  deps = ["@grpc//:grpc_unsecure"],
+  linkshared = 1
+)
