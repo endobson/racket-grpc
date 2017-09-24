@@ -8,6 +8,7 @@
   "status.rkt"
   "malloc-util.rkt"
   "ffi/lib.rkt"
+  "ffi/slice.rkt"
   ffi/unsafe
   racket/promise
   racket/async-channel

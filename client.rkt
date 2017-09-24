@@ -5,6 +5,7 @@
   "buffer-reader.rkt"
   "malloc-util.rkt"
   "ffi/lib.rkt"
+  "ffi/slice.rkt"
   "ffi/timespec.rkt"
   racket/async-channel
   racket/port

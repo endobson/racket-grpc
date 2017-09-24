@@ -119,18 +119,6 @@
   (get-ffi-obj "grpc_byte_buffer_reader_next" lib-grpc
     (_fun _pointer _pointer -> _int)))
 
-(define-cstruct _gpr-slice
-  ([refcount _pointer]
-   [bytes _pointer]
-   [length _size_t]))
-
-(define grpc-slice-from-copied-buffer
-  (get-ffi-obj "grpc_slice_from_copied_buffer" lib-grpc
-    (_fun (b : _bytes) (_size_t = (bytes-length b)) -> _gpr-slice)))
-
-(define grpc-slice-unref
-  (get-ffi-obj "grpc_slice_unref" lib-grpc
-    (_fun _gpr-slice -> _void)))
 
 (define grpc-server-create
   (get-ffi-obj "grpc_server_create" lib-grpc

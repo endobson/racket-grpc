@@ -2,6 +2,7 @@
 
 (require
   "ffi/lib.rkt"
+  "ffi/slice.rkt"
   ffi/unsafe
   (for-syntax
     racket/base

@@ -82,6 +82,14 @@ racket_library(
 )
 
 racket_library(
+    name = "slice",
+    srcs = ["slice.rkt"],
+    deps = [
+        ":base-lib",
+    ]
+)
+
+racket_library(
     name = "timespec",
     srcs = ["timespec.rkt"],
     deps = [

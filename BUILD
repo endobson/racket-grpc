@@ -62,6 +62,7 @@ racket_library(
     srcs = ["malloc-util.rkt"],
     deps = [
         "//ffi:lib",
+        "//ffi:slice",
     ],
 )
 
