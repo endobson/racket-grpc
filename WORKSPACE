@@ -59,9 +59,9 @@ bind(
 
 http_archive(
   name = "grpc",
-  sha256 = "f0143c99942f47986713a92fca43b2fe8441e46f30caea32c9430f31600a9808",
-  strip_prefix = "grpc-1.6.0",
-  urls = ["https://github.com/grpc/grpc/archive/v1.6.0.tar.gz"]
+  sha256 = "c7db149cd89631f33300588db0464b382cd72160c750689c57a2ed3a8c52a357",
+  strip_prefix = "grpc-31c66c576ad00504b34182340f8ff21bc3f447fb",
+  urls = ["https://github.com/grpc/grpc/archive/31c66c576ad00504b34182340f8ff21bc3f447fb.tar.gz"]
 )
 
 http_archive(
