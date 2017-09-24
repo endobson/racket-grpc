@@ -46,7 +46,6 @@ racket_library(
         "//ffi:lib",
         "//ffi:channel",
         ":client",
-        ":place",
     ],
 )
 
@@ -67,14 +66,6 @@ racket_library(
 )
 
 racket_library(
-    name = "place",
-    srcs = ["place.rkt"],
-    deps = [
-        "//ffi:lib",
-    ],
-)
-
-racket_library(
     name = "return-box",
     srcs = ["return-box.rkt"],
     deps = [
@@ -89,7 +80,6 @@ racket_library(
         ":client",
         "//ffi:lib",
         "//ffi:channel",
-        ":place",
     ],
 )
 
@@ -120,7 +110,6 @@ racket_library(
     srcs = ["server.rkt"],
     deps = [
         "//ffi:lib",
-        ":place",
         ":server-call",
         ":timestamp",
         ":grpc-op-batch",

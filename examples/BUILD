@@ -23,7 +23,7 @@ racket_library(
         "//:client-call",
         "//ffi:lib",
         "//ffi:channel",
-        "//:place",
+        "//ffi:completion-queue",
     ]
 )
 

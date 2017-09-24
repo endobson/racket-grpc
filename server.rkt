@@ -1,13 +1,13 @@
 #lang racket/base
 
 (require
-  "place.rkt"
   "server-call.rkt"
   "timestamp.rkt"
   "grpc-op-batch.rkt"
   "buffer-reader.rkt"
   "status.rkt"
   "ffi/lib.rkt"
+  "ffi/completion-queue.rkt"
   racket/port
   racket/async-channel
   racket/match
@@ -21,7 +21,7 @@
 
 (define (start-server config)
   (define server (grpc-server-create #f))
-  (define cq (start-completion-queue))
+  (define cq (make-grpc-completion-queue))
 
   (grpc-server-register-completion-queue server cq)
   (for ([address (server-config-addresses config)])

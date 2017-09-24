@@ -2,16 +2,16 @@
 
 (require
   "client.rkt"
-  "place.rkt"
   "ffi/lib.rkt"
   "ffi/channel.rkt"
+  "ffi/completion-queue.rkt"
   racket/async-channel)
 
 (module+ main
 
   (define chan (grpc-insecure-channel-create "localhost:8000"))
 
-  (define cq (start-completion-queue))
+  (define cq (make-grpc-completion-queue))
 
   (define responses (make-async-channel))
 
