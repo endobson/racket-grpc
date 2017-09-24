@@ -1,8 +1,10 @@
 #lang racket/base
 
 (require
+  "base-lib.rkt"
+  "completion-queue.rkt"
+  "timespec.rkt"
   racket/format
-  racket/runtime-path
   racket/place
   ffi/unsafe
   ffi/cvector
@@ -10,17 +12,9 @@
   racket/list)
 (provide (all-defined-out))
 
-(define-runtime-path lib-grpc-path "./libgrpc_unsecure.so")
-(define lib-grpc (ffi-lib lib-grpc-path))
-
-
-
-((get-ffi-obj "grpc_init" lib-grpc (_fun -> _void)))
-
 
 (define _grpc-channel _pointer)
 (define _grpc-metadata _pointer)
-(define _grpc-completion-queue _pointer)
 (define _grpc-call _pointer)
 ;; TODO make this an enum
 (define _grpc-call-error _int)
@@ -34,7 +28,6 @@
        [capacity _size_t]
        [metadata _pointer]))
 
-(define-cstruct _gpr-timespec ([tv_sec _int64] [tv_nsec _int]))
 
 (define-cstruct _grpc-send-initial-metadata
       ([count _size_t]
@@ -84,42 +77,14 @@
                                   _grpc-recv-close-on-server)]))
 
 
-(define-cstruct _grpc-event
-  ([type _int]
-   [success _int]
-   [value _pointer]))
-
-
 (define grpc-channel-create
   (get-ffi-obj "grpc_channel_create" lib-grpc (_fun _string _pointer -> _grpc-channel)))
-(define grpc-completion-queue-create
-  (get-ffi-obj "grpc_completion_queue_create" lib-grpc (_fun -> _grpc-completion-queue)))
 (define grpc-channel-create-call
   (get-ffi-obj "grpc_channel_create_call" lib-grpc
     (_fun _grpc-channel _grpc-completion-queue _string _string _gpr-timespec -> _grpc-call)))
 (define grpc-call-start-batch
   (get-ffi-obj "grpc_call_start_batch" lib-grpc
     (_fun _grpc-call (ops : _cvector) (_size_t = (cvector-length ops)) _pointer -> _grpc-call-error)))
-
-(define grpc-completion-queue-next
-  (get-ffi-obj "grpc_completion_queue_next" lib-grpc
-    (_fun _grpc-completion-queue _gpr-timespec -> _grpc-event)))
-
-(define grpc-completion-queue-shutdown
-
-  (get-ffi-obj "grpc_completion_queue_shutdown" lib-grpc
-    (_fun _grpc-completion-queue -> _void)))
-
-
-(define gpr-now
-  (get-ffi-obj "gpr_now" lib-grpc
-    (_fun -> _gpr-timespec)))
-
-(define gpr-inf-future
-  (get-ffi-obj "gpr_inf_future" lib-grpc _gpr-timespec))
-
-
-
 
 (define grpc-metadata-array-init
   (get-ffi-obj "grpc_metadata_array_init" lib-grpc

@@ -12,9 +12,36 @@ cc_binary(
 
 
 racket_library(
-    name = "lib",
-    srcs = ["lib.rkt"],
+    name = "base-lib",
+    srcs = ["base-lib.rkt"],
     data = [
         ":libgrpc_unsecure.so",
+    ]
+)
+
+racket_library(
+    name = "completion-queue",
+    srcs = ["completion-queue.rkt"],
+    deps = [
+        ":base-lib",
+        ":timespec",
+    ]
+)
+
+racket_library(
+    name = "lib",
+    srcs = ["lib.rkt"],
+    deps = [
+        ":base-lib",
+        ":completion-queue",
+        ":timespec",
+    ]
+)
+
+racket_library(
+    name = "timespec",
+    srcs = ["timespec.rkt"],
+    deps = [
+        ":base-lib",
     ]
 )

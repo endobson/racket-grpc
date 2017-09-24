@@ -2,12 +2,12 @@
 
 (require
   "grpc-op-batch.rkt"
-  "lib.rkt"
   "buffer-reader.rkt"
   "timestamp.rkt"
   "return-box.rkt"
   "status.rkt"
   "malloc-util.rkt"
+  "ffi/lib.rkt"
   ffi/unsafe
   racket/promise
   racket/async-channel
@@ -107,10 +107,10 @@
 
              (define send-message-buffer
                (and message
-                 (let ([send-message-slice (gpr-slice-from-copied-buffer message)])
+                 (let ([send-message-slice (grpc-slice-from-copied-buffer message)])
                    (begin0
                      (grpc-raw-byte-buffer-create send-message-slice 1)
-                     (gpr-slice-unref send-message-slice)))))
+                     (grpc-slice-unref send-message-slice)))))
 
              (set-return-box! rb 
                (delay/strict
@@ -165,4 +165,4 @@
 (define (server-call-wait call)
   (sync (server-call-read-thread-finished-evt call))
   (sync (server-call-write-thread-finished-evt call))
-  (grpc-call-destroy (server-call-grpc-call call)))
+  (grpc-call-unref (server-call-grpc-call call)))

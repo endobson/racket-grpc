@@ -1,10 +1,11 @@
 #lang racket/base
 
 (require
-  "ffi/lib.rkt"
   "grpc-op-batch.rkt"
   "malloc-util.rkt"
   "buffer-reader.rkt"
+  "ffi/lib.rkt"
+  "ffi/timespec.rkt"
   racket/async-channel
   racket/port
   racket/match
@@ -20,7 +21,7 @@
 
 (define (make-client-call chan method cq)
   (define deadline (gpr-now))
-  (set-gpr-timespec-tv_sec! deadline (+ (gpr-timespec-tv_sec deadline) 1))
+  (set-gpr-timespec-seconds! deadline (+ (gpr-timespec-seconds deadline) 1))
   (define host "localhost")
 
   (define call (grpc-channel-create-call chan cq method host deadline))

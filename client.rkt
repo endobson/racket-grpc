@@ -1,10 +1,11 @@
 #lang racket/base
 
 (require
-  "lib.rkt"
   "grpc-op-batch.rkt"
   "buffer-reader.rkt"
   "malloc-util.rkt"
+  "ffi/lib.rkt"
+  "ffi/timespec.rkt"
   racket/async-channel
   racket/port
   ffi/unsafe
@@ -22,7 +23,7 @@
 
 (define (send-request cq chan method)
   (define deadline (gpr-now))
-  (set-gpr-timespec-tv_sec! deadline (+ (gpr-timespec-tv_sec deadline) 1))
+  (set-gpr-timespec-seconds! deadline (+ (gpr-timespec-seconds deadline) 1))
 
   (define call (grpc-channel-create-call chan cq method "localhost" deadline))
 
@@ -30,7 +31,7 @@
   (define recv-metadata (malloc-struct _grpc-metadata-array))
   (grpc-metadata-array-init recv-metadata)
 
-  (define send-message-slice (gpr-slice-from-copied-buffer #"\x08\x00\x10\x12"))
+  (define send-message-slice (grpc-slice-from-copied-buffer #"\x08\x00\x10\x12"))
   (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
 
   (define recv-status (malloc-struct _recv-status))
@@ -85,7 +86,7 @@
       (define status (recv-status-code recv-status))
       (case status
         [(0)
-         (grpc-call-destroy call)
+         (grpc-call-unref call)
          (void)]
         [else
           (printf "Error ~a: ~a~n" (recv-status-details recv-status))]))))

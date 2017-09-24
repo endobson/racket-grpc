@@ -2,8 +2,8 @@
 
 (require
   "client.rkt"
-  "lib.rkt"
   "place.rkt"
+  "ffi/lib.rkt"
   racket/async-channel)
 
 (module+ main

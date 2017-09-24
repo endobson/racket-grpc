@@ -2,18 +2,19 @@
 
 (require
   ffi/unsafe
-  "ffi/lib.rkt")
+  "ffi/completion-queue.rkt"
+  "ffi/timespec.rkt")
 
 (provide start-completion-queue)
 
 
 (define (start-completion-queue)
-  (define cq (grpc-completion-queue-create))
+  (define cq (grpc-completion-queue-create-for-next))
   (define blocking-place
     (place pch
       (define cq (sync pch))
       (let loop ()
-        (define result (grpc-completion-queue-next cq gpr-inf-future))
+        (define result (grpc-completion-queue-next cq (gpr-infinite-future)))
         (case (grpc-event-type result)
           [(0)
            (place-channel-put pch 'shutdown)
