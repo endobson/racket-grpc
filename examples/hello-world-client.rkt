@@ -3,10 +3,11 @@
 (require
   "../client-call.rkt"
   "../ffi/lib.rkt"
+  "../ffi/channel.rkt"
   "../place.rkt")
 
 (module+ main
-  (define chan (grpc-channel-create "localhost:8000" #f))
+  (define chan (grpc-insecure-channel-create "localhost:8000" #f))
 
   ;(define cq (start-completion-queue))
   ;(define client-call (make-client-call chan "/grpc.testing.TestService/Echo" cq))

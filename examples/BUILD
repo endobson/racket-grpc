@@ -22,6 +22,7 @@ racket_library(
     deps = [
         "//:client-call",
         "//ffi:lib",
+        "//ffi:channel",
         "//:place",
     ]
 )

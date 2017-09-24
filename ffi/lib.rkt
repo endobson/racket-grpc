@@ -13,7 +13,6 @@
 (provide (all-defined-out))
 
 
-(define _grpc-channel _pointer)
 (define _grpc-metadata _pointer)
 (define _grpc-call _pointer)
 ;; TODO make this an enum
@@ -77,8 +76,7 @@
                                   _grpc-recv-close-on-server)]))
 
 
-(define grpc-channel-create
-  (get-ffi-obj "grpc_channel_create" lib-grpc (_fun _string _pointer -> _grpc-channel)))
+(define _grpc-channel _pointer)
 (define grpc-channel-create-call
   (get-ffi-obj "grpc_channel_create_call" lib-grpc
     (_fun _grpc-channel _grpc-completion-queue _string _string _gpr-timespec -> _grpc-call)))

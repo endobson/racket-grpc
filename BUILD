@@ -44,6 +44,7 @@ racket_library(
     srcs = ["continuous-client.rkt"],
     deps = [
         "//ffi:lib",
+        "//ffi:channel",
         ":client",
         ":place",
     ],
@@ -87,6 +88,7 @@ racket_library(
     deps = [
         ":client",
         "//ffi:lib",
+        "//ffi:channel",
         ":place",
     ],
 )
