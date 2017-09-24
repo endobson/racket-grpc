@@ -10,6 +10,8 @@
 
 (provide
   (contract-out
+    [_grpc-channel ctype?]
+    [grpc-channel? (c:-> any/c boolean?)]
     [grpc-insecure-channel-create (c:-> string? grpc-channel?)]
     [grpc-channel-destroy (c:-> grpc-channel? void?)]
     [grpc-channel-check-connectivity-state (c:-> grpc-channel? boolean? exact-nonnegative-integer?)]

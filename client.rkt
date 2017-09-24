@@ -7,6 +7,7 @@
   "ffi/lib.rkt"
   "ffi/slice.rkt"
   "ffi/timespec.rkt"
+  "ffi/call.rkt"
   racket/async-channel
   racket/port
   ffi/unsafe

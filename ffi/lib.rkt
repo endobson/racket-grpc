@@ -76,10 +76,6 @@
                                   _grpc-recv-close-on-server)]))
 
 
-(define _grpc-channel _pointer)
-(define grpc-channel-create-call
-  (get-ffi-obj "grpc_channel_create_call" lib-grpc
-    (_fun _grpc-channel _grpc-completion-queue _string _string _gpr-timespec -> _grpc-call)))
 (define grpc-call-start-batch
   (get-ffi-obj "grpc_call_start_batch" lib-grpc
     (_fun _grpc-call (ops : _cvector) (_size_t = (cvector-length ops)) _pointer -> _grpc-call-error)))

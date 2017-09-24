@@ -6,6 +6,7 @@
   "buffer-reader.rkt"
   "ffi/lib.rkt"
   "ffi/timespec.rkt"
+  "ffi/call.rkt"
   racket/async-channel
   racket/port
   racket/match

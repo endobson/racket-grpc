@@ -20,6 +20,19 @@ racket_library(
 )
 
 racket_library(
+    name = "call",
+    srcs = ["call.rkt"],
+    deps = [
+        ":base-lib",
+        ":completion-queue",
+        ":channel",
+        ":slice",
+    ]
+)
+
+
+
+racket_library(
     name = "channel",
     srcs = ["channel.rkt"],
     deps = [

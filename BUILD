@@ -22,6 +22,7 @@ racket_library(
     srcs = ["client-call.rkt"],
     deps = [
         "//ffi:lib",
+        "//ffi:call",
         ":grpc-op-batch",
         ":malloc-util",
         ":buffer-reader",
@@ -33,6 +34,7 @@ racket_library(
     srcs = ["client.rkt"],
     deps = [
         "//ffi:lib",
+        "//ffi:call",
         ":grpc-op-batch",
         ":malloc-util",
         ":buffer-reader",
