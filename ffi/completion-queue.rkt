@@ -19,7 +19,9 @@
 
     ;; Compeltion queues 
     [_grpc-completion-queue ctype?]
+    [grpc-completion-queue? (c:-> any/c boolean?)]
     [make-grpc-completion-queue (c:-> grpc-completion-queue?)]
+    [make-grpc-completion-queue-tag (c:-> (values cpointer? evt?))]
     [grpc-completion-queue-shutdown (c:-> grpc-completion-queue? void?)]
 
     ;; Grpc alarms
@@ -102,7 +104,7 @@
 ;; The first argument should be passed to the foregin function, and the second is an 'evt?'
 ;; that will be ready once the underlying event has happened. The return value of the event is
 ;; true if the op was successful.
-(define (make-completion-queue-tag)
+(define (make-grpc-completion-queue-tag)
   (define sema (make-semaphore))
   (define b (box 'unset))
   (values
@@ -126,10 +128,9 @@
   (get-ffi-obj "grpc_alarm_set" lib-grpc
     (_fun _grpc-alarm _grpc-completion-queue _gpr-timespec _pointer _pointer -> _void)))
 (define (grpc-alarm-set alarm cq timespec)
-  (define-values (tag evt) (make-completion-queue-tag))
+  (define-values (tag evt) (make-grpc-completion-queue-tag))
   (grpc-alarm-set/ffi alarm cq timespec tag #f)
   evt)
-
 
 (define grpc-alarm-cancel/ffi
   (get-ffi-obj "grpc_alarm_cancel" lib-grpc

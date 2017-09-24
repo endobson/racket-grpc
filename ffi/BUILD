@@ -24,6 +24,25 @@ racket_library(
     srcs = ["channel.rkt"],
     deps = [
         ":base-lib",
+        ":completion-queue",
+    ]
+)
+
+racket_library(
+    name = "channel-test",
+    srcs = ["channel-test.rkt"],
+    deps = [
+        ":channel",
+        ":completion-queue",
+        ":timespec",
+    ]
+)
+
+racket_test(
+    name = "channel_test",
+    main_module = "channel-test.rkt",
+    deps = [
+        ":channel-test",
     ]
 )
 
