@@ -16,8 +16,6 @@
 (define _grpc-metadata _pointer)
 (define _grpc-call _pointer)
 ;; TODO make this an enum
-(define _grpc-call-error _int)
-;; TODO make this an enum
 (define _grpc-status-code _int)
 (define _size_t _int64)
 
@@ -75,10 +73,6 @@
                                   _grpc-recv_status_on_client
                                   _grpc-recv-close-on-server)]))
 
-
-(define grpc-call-start-batch
-  (get-ffi-obj "grpc_call_start_batch" lib-grpc
-    (_fun _grpc-call (ops : _cvector) (_size_t = (cvector-length ops)) _pointer -> _grpc-call-error)))
 
 (define grpc-metadata-array-init
   (get-ffi-obj "grpc_metadata_array_init" lib-grpc

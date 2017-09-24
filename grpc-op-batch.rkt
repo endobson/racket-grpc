@@ -12,8 +12,7 @@
   racket/list)
 
 (provide
-  grpc-op-batch
-  grpc-call-start-batch*)
+  grpc-op-batch)
 
 (begin-for-syntax
   (define-splicing-syntax-class base-op^
@@ -98,15 +97,4 @@
             (ops.initialize (cvector-ref ops-vector index))
             (set! index (add1 index))) ...
          ops-vector)]))
-
-
-(define (grpc-call-start-batch* call ops)
-  (define sema (make-semaphore))
-  (define box (malloc-immobile-cell sema))
-  (define error-code (grpc-call-start-batch call ops box))
-  (unless (zero? error-code)
-    (free-immobile-cell box)
-    (error 'grpc-call-start-batch "Error: ~a" error-code))
-  (semaphore-peek-evt sema))
-
 

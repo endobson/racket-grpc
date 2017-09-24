@@ -52,7 +52,7 @@
       (call-with-malloc-grpc-byte-buffer bytes
         (λ (send-message-buffer)
           (sync
-            (grpc-call-start-batch* call 
+            (grpc-call-start-batch call 
               (grpc-op-batch
                  #:send-initial-metadata 0 #f
                  #:send-message send-message-buffer
@@ -92,7 +92,7 @@
 
 
     (sync
-      (grpc-call-start-batch* call
+      (grpc-call-start-batch call
         (grpc-op-batch #:recv-status-on-client grpc-recv-status)))
     (async-channel-put status-channel
         (list
@@ -110,7 +110,7 @@
           (λ (payload-pointer)
             (let loop ()
               (sync
-                (grpc-call-start-batch* call
+                (grpc-call-start-batch call
                   (grpc-op-batch #:recv-message payload-pointer)))
               (define payload (ptr-ref payload-pointer _pointer))
               (when payload

@@ -53,7 +53,7 @@
       (recv-status-details-capacity-pointer recv-status)))
 
   (sync
-    (grpc-call-start-batch* call
+    (grpc-call-start-batch call
       (grpc-op-batch
          #:send-initial-metadata 0 #f
          #:send-message send-message-buffer
@@ -69,7 +69,7 @@
           (λ (payload-pointer)
             (let loop ()
               (sync
-                (grpc-call-start-batch* call
+                (grpc-call-start-batch call
                   (grpc-op-batch #:recv-message payload-pointer)))
               (define payload (ptr-ref payload-pointer _pointer))
               (when payload
@@ -78,7 +78,7 @@
                   (port->bytes (grpc-buffer->input-port payload)))
                 (loop)))))
         (sync
-          (grpc-call-start-batch* call
+          (grpc-call-start-batch call
             (grpc-op-batch #:recv-status-on-client grpc-recv-status))))))
 
 

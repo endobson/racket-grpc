@@ -91,12 +91,13 @@ racket_library(
     srcs = ["server-call.rkt"],
     deps = [
         ":grpc-op-batch",
-        "//ffi:lib",
         ":buffer-reader",
         ":timestamp",
         ":return-box",
         ":status",
         ":malloc-util",
+        "//ffi:lib",
+        "//ffi:call",
     ],
 )
 

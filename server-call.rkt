@@ -9,6 +9,7 @@
   "malloc-util.rkt"
   "ffi/lib.rkt"
   "ffi/slice.rkt"
+  "ffi/call.rkt"
   ffi/unsafe
   racket/promise
   racket/async-channel
@@ -79,7 +80,7 @@
           (λ (payload-pointer)
             (let loop ()
               (sync
-                (grpc-call-start-batch*
+                (grpc-call-start-batch
                   grpc-call
                   (grpc-op-batch #:recv-message payload-pointer)))
               (define payload (ptr-ref payload-pointer _pointer))
@@ -115,7 +116,7 @@
 
              (set-return-box! rb 
                (delay/strict
-                 (grpc-call-start-batch*
+                 (grpc-call-start-batch
                    grpc-call
                    (grpc-op-batch
                      #:cond send-initial-metadata #:send-initial-metadata 0 #f
