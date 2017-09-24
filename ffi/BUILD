@@ -1,4 +1,4 @@
-load("@minimal_racket//:racket.bzl",  "racket_binary", "racket_library")
+load("@minimal_racket//:racket.bzl",  "racket_test", "racket_library")
 
 package(
   default_visibility = ["//visibility:public"]
@@ -36,8 +36,8 @@ racket_library(
     ]
 )
 
-racket_binary(
-    name = "completion-queue-test-bin",
+racket_test(
+    name = "completion-queue_test",
     main_module = "completion-queue-test.rkt",
     deps = [
         ":completion-queue-test",

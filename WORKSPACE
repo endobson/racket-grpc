@@ -2,9 +2,9 @@ workspace(name = "racket_grpc")
 
 http_archive(
   name = "minimal_racket",
-  sha256 = "4d431edf7784e4c869cb03f1dc371c9cc4b714dcfc23734b23dee0d6c21b7a51",
-  strip_prefix = "minimal-racket-b05cd33865d17977ac75f3cc635f6a0b075ff054",
-  urls = ["https://github.com/endobson/minimal-racket/archive/b05cd33865d17977ac75f3cc635f6a0b075ff054.tar.gz"]
+  sha256 = "dd6a699dfed069f2bf9285737cc1fce83fb138e42279e09425624448153641b7",
+  strip_prefix = "minimal-racket-55933ed66b0536d6501fa8f15d79f56cce549c58",
+  urls = ["https://github.com/endobson/minimal-racket/archive/55933ed66b0536d6501fa8f15d79f56cce549c58.tar.gz"]
 )
 
 load("@minimal_racket//:releases.bzl", "racket_releases")
