@@ -55,6 +55,7 @@ racket_library(
     name = "grpc-op-batch",
     srcs = ["grpc-op-batch.rkt"],
     deps = [
+        "//ffi:call",
         "//ffi:lib",
     ],
 )
@@ -63,6 +64,7 @@ racket_library(
     name = "malloc-util",
     srcs = ["malloc-util.rkt"],
     deps = [
+        "//ffi:call",
         "//ffi:lib",
         "//ffi:slice",
     ],

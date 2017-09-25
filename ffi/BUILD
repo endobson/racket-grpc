@@ -89,6 +89,7 @@ racket_library(
     srcs = ["lib.rkt"],
     deps = [
         ":base-lib",
+        ":call",
         ":completion-queue",
         ":timespec",
     ]

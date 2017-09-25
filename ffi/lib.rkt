@@ -2,6 +2,7 @@
 
 (require
   "base-lib.rkt"
+  "call.rkt"
   "completion-queue.rkt"
   "timespec.rkt"
   racket/format
@@ -15,67 +16,8 @@
 
 (define _grpc-metadata _pointer)
 (define _grpc-call _pointer)
-;; TODO make this an enum
-(define _grpc-status-code _int)
 (define _size_t _int64)
 
-
-(define-cstruct _grpc-metadata-array
-      ([count _size_t]
-       [capacity _size_t]
-       [metadata _pointer]))
-
-
-(define-cstruct _grpc-send-initial-metadata
-      ([count _size_t]
-       [metadata _pointer]))
-
-;; grpc_byte_buffer *send_message;
-(define _grpc-send-message _pointer)
-
-(define-cstruct _grpc-send-status-from-server
-      ([trailing_metadata_count _size_t]
-       [trailing_metadata _pointer]
-       [status _grpc-status-code]
-       [status_details _pointer]))
-
-;; grpc_metadata_array *recv_initial_metadata;
-(define _grpc-recv_initial_metadata _grpc-metadata-array-pointer)
-;; grpc_byte_buffer **recv_message;
-(define _grpc-recv_message _pointer)
-(define-cstruct _grpc-recv_status_on_client
-      ([trailing_metadata _pointer]
-       [status _pointer]
-       [status_details _pointer]
-       [status_details_capacity _pointer]))
-
-(define-cstruct _grpc-recv-close-on-server
-    ([cancelled _pointer]))
-
-(define _grpc-op-type
-  (_enum
-    '(send-initial-metadata
-      send-message
-      send-close-from-client
-      send-status-from-server
-      recv-initial-metadata
-      recv-message
-      recv-status-on-client
-      recv-close-on-server)))
-
-(define-cstruct _grpc-op
-  ([op _grpc-op-type]
-   [flags _uint32]
-   [reserved _pointer]
-   [data (_union
-           _grpc-send-initial-metadata
-           _grpc-send-message
-           _grpc-send-status-from-server
-           _grpc-recv_initial_metadata
-           _grpc-recv_message
-           _grpc-recv_status_on_client
-           _grpc-recv-close-on-server
-           (_array _pointer 8))]))
 
 (define grpc-metadata-array-init
   (get-ffi-obj "grpc_metadata_array_init" lib-grpc

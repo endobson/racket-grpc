@@ -1,6 +1,7 @@
 #lang racket/base
 
 (require
+  "ffi/call.rkt"
   "ffi/lib.rkt"
   "ffi/slice.rkt"
   ffi/unsafe

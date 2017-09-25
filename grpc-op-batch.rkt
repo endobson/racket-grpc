@@ -6,6 +6,7 @@
     racket/syntax
     syntax/parse)
 
+  "ffi/call.rkt"
   "ffi/lib.rkt"
   ffi/unsafe
   ffi/unsafe/cvector
@@ -40,10 +41,10 @@
         #'(lambda (op)
             (set-grpc-op-op! op 'send-status-from-server)
             (define data (union-ref (grpc-op-data op) 2))
-            (set-grpc-send-status-from-server-trailing_metadata_count! data metadata-count)
-            (set-grpc-send-status-from-server-trailing_metadata! data metadata)
+            (set-grpc-send-status-from-server-trailing-metadata-count! data metadata-count)
+            (set-grpc-send-status-from-server-trailing-metadata! data metadata)
             (set-grpc-send-status-from-server-status! data status)
-            (set-grpc-send-status-from-server-status_details! data status-details)))
+            (set-grpc-send-status-from-server-status-details! data status-details)))
     (pattern
       (~seq #:send-close-from-client)
       #:with initialize
