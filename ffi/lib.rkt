@@ -63,16 +63,19 @@
       recv-status-on-client
       recv-close-on-server)))
 
-(define-cstruct _grpc-op ([op _grpc-op-type]
-                          [data (_union
-                                  _grpc-send-initial-metadata
-                                  _grpc-send-message
-                                  _grpc-send-status-from-server
-                                  _grpc-recv_initial_metadata
-                                  _grpc-recv_message
-                                  _grpc-recv_status_on_client
-                                  _grpc-recv-close-on-server)]))
-
+(define-cstruct _grpc-op
+  ([op _grpc-op-type]
+   [flags _uint32]
+   [reserved _pointer]
+   [data (_union
+           _grpc-send-initial-metadata
+           _grpc-send-message
+           _grpc-send-status-from-server
+           _grpc-recv_initial_metadata
+           _grpc-recv_message
+           _grpc-recv_status_on_client
+           _grpc-recv-close-on-server
+           (_array _pointer 8))]))
 
 (define grpc-metadata-array-init
   (get-ffi-obj "grpc_metadata_array_init" lib-grpc

@@ -94,7 +94,10 @@
          (define index 0)
          (define ops-vector (make-cvector _grpc-op ops-length))
          (when tests
-            (ops.initialize (cvector-ref ops-vector index))
+            (define op (cvector-ref ops-vector index))
+            (set-grpc-op-flags! op 0)
+            (set-grpc-op-reserved! op #f)
+            (ops.initialize op)
             (set! index (add1 index))) ...
          ops-vector)]))
 
