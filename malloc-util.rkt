@@ -1,6 +1,7 @@
 #lang racket/base
 
 (require
+  "ffi/byte-buffer.rkt"
   "ffi/call.rkt"
   "ffi/lib.rkt"
   "ffi/slice.rkt"

@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require
-  "ffi/lib.rkt"
+  "ffi/byte-buffer.rkt"
   ffi/unsafe)
 
 (provide grpc-buffer->input-port)

@@ -10,12 +10,20 @@ cc_binary(
   linkshared = 1
 )
 
-
 racket_library(
     name = "base-lib",
     srcs = ["base-lib.rkt"],
     data = [
         ":libgrpc_unsecure.so",
+    ]
+)
+
+racket_library(
+    name = "byte-buffer",
+    srcs = ["byte-buffer.rkt"],
+    deps = [
+        ":base-lib",
+        ":slice",
     ]
 )
 
@@ -29,8 +37,6 @@ racket_library(
         ":slice",
     ]
 )
-
-
 
 racket_library(
     name = "channel",

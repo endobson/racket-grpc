@@ -7,6 +7,7 @@
   "return-box.rkt"
   "status.rkt"
   "malloc-util.rkt"
+  "ffi/byte-buffer.rkt"
   "ffi/lib.rkt"
   "ffi/slice.rkt"
   "ffi/call.rkt"

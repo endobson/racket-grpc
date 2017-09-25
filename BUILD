@@ -13,6 +13,7 @@ racket_library(
     name = "buffer-reader",
     srcs = ["buffer-reader.rkt"],
     deps = [
+        "//ffi:byte-buffer",
         "//ffi:lib",
     ],
 )
@@ -64,6 +65,7 @@ racket_library(
     name = "malloc-util",
     srcs = ["malloc-util.rkt"],
     deps = [
+        "//ffi:byte-buffer",
         "//ffi:call",
         "//ffi:lib",
         "//ffi:slice",
