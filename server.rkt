@@ -4,10 +4,10 @@
   "server-call.rkt"
   "timestamp.rkt"
   "grpc-op-batch.rkt"
-  "buffer-reader.rkt"
   "status.rkt"
   "ffi/lib.rkt"
   "ffi/completion-queue.rkt"
+  "ffi/byte-buffer.rkt"
   racket/port
   racket/async-channel
   racket/match

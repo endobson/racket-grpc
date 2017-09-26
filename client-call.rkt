@@ -3,15 +3,15 @@
 (require
   "grpc-op-batch.rkt"
   "malloc-util.rkt"
-  "buffer-reader.rkt"
   "ffi/lib.rkt"
   "ffi/timespec.rkt"
   "ffi/call.rkt"
+  "ffi/byte-buffer.rkt"
+  "ffi/slice.rkt"
   racket/async-channel
   racket/port
   racket/match
-  ffi/unsafe
-  )
+  ffi/unsafe)
 
 
 (provide
@@ -116,7 +116,7 @@
               (when payload
                 (async-channel-put
                   recv-message-channel
-                  (port->bytes (grpc-buffer->input-port payload)))
+                  (port->bytes (grpc-byte-buffer->input-port payload)))
                 (loop)))))
         (handle-recv-status))))
 

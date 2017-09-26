@@ -27,10 +27,6 @@
   (get-ffi-obj "grpc_metadata_array_destroy" lib-grpc
     (_fun _grpc-metadata-array-pointer -> _void)))
 
-(define grpc-raw-byte-buffer-create
-  (get-ffi-obj "grpc_raw_byte_buffer_create" lib-grpc
-    (_fun _pointer _int -> _pointer)))
-
 (define grpc-server-create
   (get-ffi-obj "grpc_server_create" lib-grpc
     (_fun _pointer -> _pointer)))

@@ -2,12 +2,12 @@
 
 (require
   "grpc-op-batch.rkt"
-  "buffer-reader.rkt"
   "malloc-util.rkt"
   "ffi/lib.rkt"
   "ffi/slice.rkt"
   "ffi/timespec.rkt"
   "ffi/call.rkt"
+  "ffi/byte-buffer.rkt"
   racket/async-channel
   racket/port
   ffi/unsafe
@@ -33,8 +33,7 @@
   (define recv-metadata (malloc-struct _grpc-metadata-array))
   (grpc-metadata-array-init recv-metadata)
 
-  (define send-message-slice (grpc-slice-from-copied-buffer #"\x08\x00\x10\x12"))
-  (define send-message-buffer (grpc-raw-byte-buffer-create send-message-slice 1))
+  (define send-message-buffer (make-grpc-byte-buffer #"\x08\x00\x10\x12"))
 
   (define recv-status (malloc-struct _recv-status))
   (grpc-metadata-array-init (recv-status-trailers recv-status))
@@ -75,7 +74,7 @@
               (when payload
                 (async-channel-put
                   recv-message-channel
-                  (port->bytes (grpc-buffer->input-port payload)))
+                  (port->bytes (grpc-byte-buffer->input-port payload)))
                 (loop)))))
         (sync
           (grpc-call-start-batch call

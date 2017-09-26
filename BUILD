@@ -10,15 +10,6 @@ package(
 )
 
 racket_library(
-    name = "buffer-reader",
-    srcs = ["buffer-reader.rkt"],
-    deps = [
-        "//ffi:byte-buffer",
-        "//ffi:lib",
-    ],
-)
-
-racket_library(
     name = "client-call",
     srcs = ["client-call.rkt"],
     deps = [
@@ -26,7 +17,6 @@ racket_library(
         "//ffi:call",
         ":grpc-op-batch",
         ":malloc-util",
-        ":buffer-reader",
     ],
 )
 
@@ -38,7 +28,6 @@ racket_library(
         "//ffi:call",
         ":grpc-op-batch",
         ":malloc-util",
-        ":buffer-reader",
     ],
 )
 
@@ -95,7 +84,6 @@ racket_library(
     srcs = ["server-call.rkt"],
     deps = [
         ":grpc-op-batch",
-        ":buffer-reader",
         ":timestamp",
         ":return-box",
         ":status",
@@ -121,7 +109,6 @@ racket_library(
         ":server-call",
         ":timestamp",
         ":grpc-op-batch",
-        ":buffer-reader",
         ":status",
     ],
 )

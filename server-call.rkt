@@ -2,7 +2,6 @@
 
 (require
   "grpc-op-batch.rkt"
-  "buffer-reader.rkt"
   "timestamp.rkt"
   "return-box.rkt"
   "status.rkt"
@@ -88,7 +87,7 @@
               (when payload
                 (async-channel-put
                   recv-message-channel
-                  (port->bytes (grpc-buffer->input-port payload)))
+                  (port->bytes (grpc-byte-buffer->input-port payload)))
                 (loop))))))))
 
   (define write-thread
@@ -109,11 +108,7 @@
                    (and (eq? state 'before-metadata) (hash))))
 
              (define send-message-buffer
-               (and message
-                 (let ([send-message-slice (grpc-slice-from-copied-buffer message)])
-                   (begin0
-                     (grpc-raw-byte-buffer-create send-message-slice 1)
-                     (grpc-slice-unref send-message-slice)))))
+               (and message (make-grpc-byte-buffer message)))
 
              (set-return-box! rb 
                (delay/strict
