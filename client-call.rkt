@@ -21,29 +21,19 @@
   client-call-run)
 
 (define (make-client-call chan method cq)
-  (define deadline (gpr-now))
+  (define deadline (gpr-now 'monotonic))
   (set-gpr-timespec-seconds! deadline (+ (gpr-timespec-seconds deadline) 1))
-  (define host "localhost")
 
-  (define call (grpc-channel-create-call chan cq method host deadline))
+  (define call (grpc-channel-create-call chan #f cq method deadline))
 
 
   (define cancelled-sema (make-semaphore))
   (define recv-message-channel (make-async-channel))
   (define send-message-channel (make-async-channel))
 
-
-
   (client-call call recv-message-channel))
 
 (struct client-call (call recv-message-channel))
-
-
-(define-cstruct _recv-status
-  ([trailers _grpc-metadata-array]
-   [code _int]
-   [details _string]
-   [details-capacity _size_t]))
 
 (define (client-call-send-message client-call bytes)
   (define call (client-call-call client-call))
@@ -67,41 +57,30 @@
   (match-define (client-call call recv-message-channel) ccall)
 
   (define status-channel (make-async-channel))
-
-
-
-
-
     
   (define (handle-recv-status)
-    (define recv-status (malloc-struct _recv-status))
-    (grpc-metadata-array-init (recv-status-trailers recv-status))
-    (set-recv-status-code! recv-status 0)
-    (set-recv-status-details! recv-status #f)
-    (set-recv-status-details-capacity! recv-status 0)
+    (define trailers-pointer (ptr-ref (malloc _grpc-metadata-array 'raw) _grpc-metadata-array))
+    (define status-code-pointer (malloc _int 'raw))
+    (define status-details-pointer (ptr-ref (malloc _grpc-slice 'raw) _grpc-slice))
 
+    (grpc-metadata-array-init trailers-pointer)
 
     (define grpc-recv-status
-      (error 'pointer "Not implemented")
-      #;
-      (make-grpc-recv_status_on_client
-        (recv-status-trailers-pointer recv-status)
-        (recv-status-code-pointer recv-status)
-        (recv-status-details-pointer recv-status)
-        (recv-status-details-capacity-pointer recv-status)))
-
+      (make-grpc-recv-status-on-client
+        trailers-pointer
+        status-code-pointer
+        status-details-pointer))
 
     (sync
       (grpc-call-start-batch call
         (grpc-op-batch #:recv-status-on-client grpc-recv-status)))
     (async-channel-put status-channel
         (list
-          (recv-status-code recv-status)
-          (recv-status-details recv-status)))
-    (free recv-status))
-
-
-
+          (ptr-ref status-code-pointer _int)
+          (grpc-slice->bytes status-details-pointer)))
+    (free trailers-pointer)
+    (free status-code-pointer)
+    (free status-details-pointer))
 
   (define read-thread
     (thread
