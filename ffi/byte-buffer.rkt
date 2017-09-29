@@ -10,6 +10,7 @@
 
 (provide
   (contract-out
+    [_grpc-byte-buffer ctype?]
     [grpc-byte-buffer? (c:-> any/c boolean?)]
     [make-grpc-byte-buffer (c:-> bytes? grpc-byte-buffer?)]
     [grpc-byte-buffer-destroy (c:-> grpc-byte-buffer? void?)]
