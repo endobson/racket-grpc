@@ -3,6 +3,7 @@
 (require
   "base-lib.rkt"
   "channel.rkt"
+  (submod "channel.rkt" unsafe)
   "completion-queue.rkt"
   (submod "completion-queue.rkt" unsafe)
   "slice.rkt"

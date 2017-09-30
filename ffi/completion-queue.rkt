@@ -40,7 +40,7 @@
 (define _grpc-completion-queue
   (make-ctype _pointer
     grpc-completion-queue-pointer
-    (lambda () (error 'grpc-completion-queue "Cannot make values"))))
+    (lambda (x) (error 'grpc-completion-queue "Cannot make values"))))
 
 (define grpc-completion-queue-shutdown
   (get-ffi-obj "grpc_completion_queue_shutdown" lib-grpc

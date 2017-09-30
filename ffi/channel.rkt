@@ -5,33 +5,42 @@
   "completion-queue.rkt"
   (submod "completion-queue.rkt" unsafe)
   ffi/unsafe
+  ffi/unsafe/alloc
   (rename-in
     racket/contract
     [-> c:->]))
 
 (provide
   (contract-out
-    [_grpc-channel ctype?]
-    [grpc-channel? (c:-> any/c boolean?)]
+    [grpc-channel? predicate/c]
     [grpc-insecure-channel-create (c:-> string? grpc-channel?)]
-    [grpc-channel-destroy (c:-> grpc-channel? void?)]
     [grpc-channel-check-connectivity-state (c:-> grpc-channel? boolean? exact-nonnegative-integer?)]
     [grpc-channel-ping (c:-> grpc-channel? grpc-completion-queue? evt?)]))
 
+(module* unsafe #f
+  (provide
+    (contract-out
+      [_grpc-channel ctype?])))
 
 ;; Channels
-(define _grpc-channel _pointer)
-(define grpc-channel? cpointer?)
-
-(define grpc-insecure-channel-create/ffi
-  (get-ffi-obj "grpc_insecure_channel_create" lib-grpc
-               (_fun _string _pointer _pointer -> _grpc-channel)))
-(define (grpc-insecure-channel-create target)
-  (grpc-insecure-channel-create/ffi target #f #f))
+(struct grpc-channel (pointer))
+(define _grpc-channel
+  (make-ctype _pointer
+    grpc-channel-pointer
+    (lambda (x) (error 'grpc-channel "Cannot make values"))))
 
 (define grpc-channel-destroy
   (get-ffi-obj "grpc_channel_destroy" lib-grpc
                (_fun _grpc-channel -> _void)))
+(define grpc-insecure-channel-create/ffi
+  (get-ffi-obj "grpc_insecure_channel_create" lib-grpc
+               (_fun _string _pointer _pointer -> _pointer)))
+(define grpc-insecure-channel-create
+  (let ([raw ((allocator grpc-channel-destroy)
+              (lambda (target)
+                (grpc-insecure-channel-create/ffi target #f #f)))])
+    (lambda (target) (grpc-channel (raw target)))))
+
 
 (define grpc-channel-check-connectivity-state
   (get-ffi-obj "grpc_channel_check_connectivity_state" lib-grpc
@@ -44,4 +53,3 @@
   (define-values (tag evt) (make-grpc-completion-queue-tag))
   (grpc-channel-ping/ffi channel cq tag #f)
   evt)
-
