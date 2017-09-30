@@ -4,6 +4,7 @@
   "base-lib.rkt"
   "timespec.rkt"
   "completion-queue.rkt"
+  (submod "completion-queue.rkt" unsafe)
   ffi/unsafe
   (rename-in
     racket/contract

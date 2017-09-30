@@ -4,6 +4,7 @@
   "base-lib.rkt"
   "channel.rkt"
   "completion-queue.rkt"
+  (submod "completion-queue.rkt" unsafe)
   "slice.rkt"
   "timespec.rkt"
   ffi/unsafe
