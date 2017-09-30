@@ -21,9 +21,9 @@
 
 (module* unsafe #f
   (provide
+    _grpc-slice ;; fun-syntax
+    _grpc-slice-pointer ;; fun-syntax
     (contract-out
-      [_grpc-slice ctype?]
-      [_grpc-slice-pointer ctype?]
       ;; For use in functions that return reffed slices.
       [_grpc-slice/ffi ctype?]
       [grpc-slice-unref (c:-> grpc-slice/ffi? void?)]
@@ -42,15 +42,12 @@
    [data (_union _grpc-slice-refcounted _grpc-slice-inlined)]))
 
 (struct grpc-slice (pointer))
-(define _grpc-slice
-  (make-ctype _grpc-slice/ffi
-    grpc-slice-pointer
-    (lambda (x) (error 'grpc-slice "Cannot make values"))))
-(define _grpc-slice-pointer
-  (make-ctype _grpc-slice/ffi-pointer
-    grpc-slice-pointer
-    (lambda (x) (error 'grpc-slice "Cannot make values"))))
-
+(define-fun-syntax _grpc-slice
+  (syntax-id-rules (_grpc-slice)
+    [_grpc-slice (type: _grpc-slice/ffi pre: (x => (grpc-slice-pointer x)))]))
+(define-fun-syntax _grpc-slice-pointer
+  (syntax-id-rules (_grpc-slice-pointer)
+    [_grpc-slice-pointer (type: _grpc-slice/ffi-pointer pre: (x => (grpc-slice-pointer x)))]))
 
 (define grpc-slice-unref
   (get-ffi-obj "grpc_slice_unref" lib-grpc

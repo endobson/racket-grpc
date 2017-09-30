@@ -20,8 +20,8 @@
 
 (module* unsafe #f
   (provide
+    _grpc-completion-queue ;; fun-syntax
     (contract-out
-      [_grpc-completion-queue ctype?]
       [make-grpc-completion-queue-tag (c:-> (values cpointer? evt?))])))
 
 ;; Completion events
@@ -37,10 +37,9 @@
 
 ;; Completion queues
 (struct grpc-completion-queue (pointer))
-(define _grpc-completion-queue
-  (make-ctype _pointer
-    grpc-completion-queue-pointer
-    (lambda (x) (error 'grpc-completion-queue "Cannot make values"))))
+(define-fun-syntax _grpc-completion-queue
+  (syntax-id-rules (_grpc-completion-queue)
+    [_grpc-completion-queue (type: _pointer pre: (x => (grpc-completion-queue-pointer x)))]))
 
 (define grpc-completion-queue-shutdown
   (get-ffi-obj "grpc_completion_queue_shutdown" lib-grpc

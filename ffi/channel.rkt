@@ -19,15 +19,14 @@
 
 (module* unsafe #f
   (provide
-    (contract-out
-      [_grpc-channel ctype?])))
+    _grpc-channel ;; fun-syntax
+    ))
 
 ;; Channels
 (struct grpc-channel (pointer))
-(define _grpc-channel
-  (make-ctype _pointer
-    grpc-channel-pointer
-    (lambda (x) (error 'grpc-channel "Cannot make values"))))
+(define-fun-syntax _grpc-channel
+  (syntax-id-rules (_grpc-channel)
+    [_grpc-channel (type: _pointer pre: (x => (grpc-channel-pointer x)))]))
 
 (define grpc-channel-destroy
   (get-ffi-obj "grpc_channel_destroy" lib-grpc
