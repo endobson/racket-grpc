@@ -3,7 +3,9 @@
 (require
   "base-lib.rkt"
   "slice.rkt"
+  (submod "slice.rkt" unsafe)
   ffi/unsafe
+  ffi/unsafe/alloc
   (rename-in
     racket/contract
     [-> c:->]))
@@ -22,12 +24,11 @@
 
 (define grpc-raw-byte-buffer-create/ffi
   (get-ffi-obj "grpc_raw_byte_buffer_create" lib-grpc
-    (_fun _pointer _int -> _pointer)))
+    (_fun _grpc-slice-pointer _int -> _pointer)))
 (define (make-grpc-byte-buffer bytes)
-  (define slice (grpc-slice-from-copied-buffer bytes))
-  (define buffer (grpc-raw-byte-buffer-create/ffi slice 1))
-  (grpc-slice-unref slice)
-  buffer)
+  (grpc-raw-byte-buffer-create/ffi
+    (grpc-slice-from-copied-buffer bytes)
+    1))
 
 (define grpc-byte-buffer-destroy
   (get-ffi-obj "grpc_byte_buffer_destroy" lib-grpc
@@ -43,8 +44,12 @@
     (_fun _grpc-byte-buffer-reader-pointer _grpc-byte-buffer -> _void)))
 
 (define grpc-byte-buffer-reader-next
-  (get-ffi-obj "grpc_byte_buffer_reader_next" lib-grpc
-    (_fun _grpc-byte-buffer-reader-pointer _grpc-slice-pointer -> _bool)))
+  (let ([raw ((allocator grpc-slice-unref)
+              (get-ffi-obj "grpc_byte_buffer_reader_next" lib-grpc
+                (_fun _grpc-byte-buffer-reader-pointer (slice : (_ptr o _grpc-slice/ffi))
+                      -> (out : _bool)
+                      -> (and out slice))))])
+    (lambda (buffer) (let ([v (raw buffer)]) (and v (grpc-slice v))))))
 
 (define grpc-byte-buffer-reader-destroy
   (get-ffi-obj "grpc_byte_buffer_reader_destroy" lib-grpc
@@ -56,12 +61,11 @@
   (define reader (ptr-ref (malloc _grpc-byte-buffer-reader) _grpc-byte-buffer-reader))
   (grpc-byte-buffer-reader-init reader buffer)
   (define location-in-slice 0)
-  (define slice (make-empty-grpc-slice))
-  (define more-buffer #t)
+  (define slice #f)
   (define (read-next-slice!)
-    (set! more-buffer (grpc-byte-buffer-reader-next reader slice))
+    (set! slice (grpc-byte-buffer-reader-next reader))
     (set! location-in-slice 0)
-    (unless more-buffer
+    (unless slice
       (grpc-byte-buffer-reader-destroy reader)
       (grpc-byte-buffer-destroy buffer)))
   (read-next-slice!)
@@ -69,12 +73,11 @@
   (make-input-port
     'grpc-buffer
     (lambda (bytes)
-      (if more-buffer
+      (if slice
           (let ()
             (define bytes-read (grpc-slice->bytes! bytes 0 slice location-in-slice))
             (set! location-in-slice (+ location-in-slice bytes-read))
             (when (= location-in-slice (grpc-slice-length slice))
-              (grpc-slice-unref slice)
               (read-next-slice!))
             bytes-read)
           eof))

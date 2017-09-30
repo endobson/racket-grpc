@@ -7,6 +7,7 @@
   "completion-queue.rkt"
   (submod "completion-queue.rkt" unsafe)
   "slice.rkt"
+  (submod "slice.rkt" unsafe)
   "timespec.rkt"
   (submod "timespec.rkt" unsafe)
   ffi/unsafe
@@ -43,13 +44,11 @@
 (define grpc-channel-create-call/ffi
   (get-ffi-obj "grpc_channel_create_call" lib-grpc
     (_fun _grpc-channel _grpc-call _uint32 _grpc-completion-queue
-          _grpc-slice _grpc-slice-pointer/null _gpr-timespec _pointer -> _grpc-call)))
+          _grpc-slice _pointer _gpr-timespec _pointer -> _grpc-call)))
 
 (define (grpc-channel-create-call channel parent cq method deadline)
   (define method-slice (grpc-slice-from-copied-buffer method))
-  (begin0
-    (grpc-channel-create-call/ffi channel parent #xFF cq method-slice #f deadline #f)
-    (grpc-slice-unref method-slice)))
+  (grpc-channel-create-call/ffi channel parent #xFF cq method-slice #f deadline #f))
 
 ;; TODO make this an enum
 (define _grpc-call-error _int)
@@ -118,7 +117,8 @@
   ([trailing-metadata-count _size]
    [trailing-metadata _pointer]
    [status _grpc-status-code]
-   [status-details _grpc-slice-pointer]))
+   ;; This should be a pointer to a grpc-slice
+   [status-details _pointer]))
 
 ;; grpc_metadata_array *recv-initial-metadata;
 (define _grpc-recv-initial-metadata _grpc-metadata-array-pointer)
@@ -127,7 +127,8 @@
 (define-cstruct _grpc-recv-status-on-client
   ([trailing-metadata _grpc-metadata-array-pointer]
    [status _pointer]
-   [status-details _grpc-slice-pointer]))
+   ;; This should be a pointer to a grpc-slice
+   [status-details _pointer]))
 
 (define-cstruct _grpc-recv-close-on-server
   ([cancelled _pointer]))

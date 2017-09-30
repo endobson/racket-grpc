@@ -10,6 +10,7 @@
   "ffi/completion-queue.rkt"
   "ffi/byte-buffer.rkt"
   "ffi/slice.rkt"
+  (submod "ffi/slice.rkt" unsafe)
   racket/port
   racket/promise
   racket/match
@@ -52,7 +53,7 @@
     (define payload-pointer (malloc _pointer 'raw))
     (define trailers-pointer (ptr-ref (malloc _grpc-metadata-array 'raw) _grpc-metadata-array))
     (define status-code-pointer (malloc _int 'raw))
-    (define status-details-pointer (ptr-ref (malloc _grpc-slice 'raw) _grpc-slice))
+    (define status-details-pointer (ptr-ref (malloc _grpc-slice/ffi 'raw) _grpc-slice/ffi))
 
     (sync
       (let ([grpc-recv-status
