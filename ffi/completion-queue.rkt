@@ -17,20 +17,13 @@
     [grpc-event-success (c:-> grpc-event? boolean?)]
     [grpc-event-value (c:-> grpc-event? cpointer?)]
 
-    ;; Compeltion queues 
+    ;; Competlion queues 
     [_grpc-completion-queue ctype?]
     [grpc-completion-queue? (c:-> any/c boolean?)]
     [make-grpc-completion-queue (c:-> grpc-completion-queue?)]
     [make-grpc-completion-queue-tag (c:-> (values cpointer? evt?))]
-    [grpc-completion-queue-shutdown (c:-> grpc-completion-queue? void?)]
+    [grpc-completion-queue-shutdown (c:-> grpc-completion-queue? void?)]))
 
-    ;; Grpc alarms
-    [_grpc-alarm ctype?]
-    [grpc-alarm-create (c:-> grpc-alarm?)]
-    [grpc-alarm-set (c:-> grpc-alarm? grpc-completion-queue? gpr-timespec? evt?)]
-    [grpc-alarm-cancel (c:-> grpc-alarm? void?)]
-    [grpc-alarm-destroy (c:-> grpc-alarm? void?)]))
-  
 ;; Completion events
 (define _grpc-completion-type
   (_enum '(shutdown timeout op-complete)))

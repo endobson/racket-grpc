@@ -2,8 +2,8 @@
 
 (require
   "completion-queue.rkt"
-  "timespec.rkt"
-  )
+  "alarm.rkt"
+  "timespec.rkt")
 
 (module* main #f
   (define now (gpr-now 'monotonic))

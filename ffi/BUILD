@@ -11,6 +11,14 @@ cc_binary(
 )
 
 racket_library(
+    name = "alarm",
+    srcs = ["alarm.rkt"],
+    deps = [
+       ":completion-queue",
+    ]
+)
+
+racket_library(
     name = "base-lib",
     srcs = ["base-lib.rkt"],
     data = [
@@ -78,6 +86,7 @@ racket_library(
     name = "completion-queue-test",
     srcs = ["completion-queue-test.rkt"],
     deps = [
+        ":alarm",
         ":completion-queue",
     ]
 )
