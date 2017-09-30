@@ -88,6 +88,7 @@ racket_library(
     deps = [
         ":alarm",
         ":completion-queue",
+        "//time:time",
     ]
 )
 
@@ -123,5 +124,6 @@ racket_library(
     srcs = ["timespec.rkt"],
     deps = [
         ":base-lib",
+        "//time:time",
     ]
 )

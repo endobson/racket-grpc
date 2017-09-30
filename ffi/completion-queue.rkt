@@ -3,6 +3,7 @@
 (require
   "base-lib.rkt"
   "timespec.rkt"
+  (submod "timespec.rkt" unsafe)
   ffi/unsafe
   ffi/unsafe/alloc
   racket/match

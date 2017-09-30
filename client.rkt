@@ -8,6 +8,7 @@
   "ffi/timespec.rkt"
   "ffi/call.rkt"
   "ffi/byte-buffer.rkt"
+  "time/time.rkt"
   racket/async-channel
   racket/port
   ffi/unsafe
@@ -24,11 +25,9 @@
 
 
 (define (send-request cq chan method)
-  (define deadline (gpr-now))
-  (set-gpr-timespec-seconds! deadline (+ (gpr-timespec-seconds deadline) 1))
+  (define deadline (gpr-timespec-add (gpr-now) (seconds->duration 1)))
 
   (define call (grpc-channel-create-call chan cq method "localhost" deadline))
-
 
   (define recv-metadata (malloc-struct _grpc-metadata-array))
   (grpc-metadata-array-init recv-metadata)

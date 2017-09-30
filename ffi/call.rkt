@@ -7,6 +7,7 @@
   (submod "completion-queue.rkt" unsafe)
   "slice.rkt"
   "timespec.rkt"
+  (submod "timespec.rkt" unsafe)
   ffi/unsafe
   ffi/cvector
   (rename-in

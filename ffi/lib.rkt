@@ -5,6 +5,7 @@
   "call.rkt"
   "completion-queue.rkt"
   "timespec.rkt"
+  (submod "timespec.rkt" unsafe)
   racket/format
   racket/place
   ffi/unsafe
@@ -43,19 +44,19 @@
   (get-ffi-obj "grpc_server_register_method" lib-grpc
     (_fun _pointer _string _string -> _pointer)))
 
-(define grpc-server-request-registered-call
-  (get-ffi-obj "grpc_server_request_registered_call" lib-grpc
-    (_fun
-      _pointer ;; server
-      _pointer ;; registered method
-      _pointer ;; call
-      _gpr-timespec-pointer ;; deadline
-      _grpc-metadata-array-pointer ;; request_metadata
-      _pointer ;; request payload
-      _pointer ;; call completion queue
-      _pointer ;; notification completion queue
-      _pointer ;; tag
-      -> _int)))
+;(define grpc-server-request-registered-call
+;  (get-ffi-obj "grpc_server_request_registered_call" lib-grpc
+;    (_fun
+;      _pointer ;; server
+;      _pointer ;; registered method
+;      _pointer ;; call
+;      _gpr-timespec-pointer ;; deadline
+;      _grpc-metadata-array-pointer ;; request_metadata
+;      _pointer ;; request payload
+;      _pointer ;; call completion queue
+;      _pointer ;; notification completion queue
+;      _pointer ;; tag
+;      -> _int)))
 
 (define-cstruct _grpc-call-details
   ([method _pointer]

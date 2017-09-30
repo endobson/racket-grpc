@@ -3,6 +3,7 @@
 (require
   "base-lib.rkt"
   "timespec.rkt"
+  (submod "timespec.rkt" unsafe)
   "completion-queue.rkt"
   (submod "completion-queue.rkt" unsafe)
   ffi/unsafe

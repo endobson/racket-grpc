@@ -3,7 +3,8 @@
 (require
   "completion-queue.rkt"
   "alarm.rkt"
-  "timespec.rkt")
+  "timespec.rkt"
+  "../time/time.rkt")
 
 (module* main #f
   (define now (gpr-now 'monotonic))
@@ -13,9 +14,8 @@
 
 
   (define one-second-from-now
-    (let ([timespec (gpr-now 'monotonic)])
-      (set-gpr-timespec-seconds! timespec (+ (gpr-timespec-seconds timespec) 1))
-      timespec))
+    (gpr-timespec-add (gpr-now 'monotonic)
+                      (seconds->duration 1)))
   (define alarm2 (grpc-alarm-create cq one-second-from-now))
   (grpc-alarm-cancel alarm2)
   (sync alarm2))
