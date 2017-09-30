@@ -39,7 +39,7 @@
 (define _grpc-completion-queue
   (make-ctype _pointer
     grpc-completion-queue-pointer
-    grpc-completion-queue))
+    (lambda () (error 'grpc-completion-queue "Cannot make values"))))
 
 (define grpc-completion-queue-shutdown
   (get-ffi-obj "grpc_completion_queue_shutdown" lib-grpc
@@ -47,11 +47,12 @@
 
 (define grpc-completion-queue-create-for-next/ffi
   (get-ffi-obj "grpc_completion_queue_create_for_next" lib-grpc
-               (_fun _pointer -> _grpc-completion-queue)))
+               (_fun _pointer -> _pointer)))
 (define grpc-completion-queue-create-for-next
-  ((allocator grpc-completion-queue-shutdown)
-   (lambda ()
-     (grpc-completion-queue-create-for-next/ffi #f))))
+  (let ([raw ((allocator grpc-completion-queue-shutdown)
+              (lambda ()
+                (grpc-completion-queue-create-for-next/ffi #f)))])
+    (lambda () (grpc-completion-queue (raw)))))
 
 (define grpc-completion-queue-next/ffi
   (get-ffi-obj "grpc_completion_queue_next" lib-grpc
