@@ -12,62 +12,73 @@
 
 (provide
   (contract-out
-    [_grpc-byte-buffer ctype?]
-    [grpc-byte-buffer? (c:-> any/c boolean?)]
+    [grpc-byte-buffer? predicate/c]
     [make-grpc-byte-buffer (c:-> bytes? grpc-byte-buffer?)]
-    [grpc-byte-buffer-destroy (c:-> grpc-byte-buffer? void?)]
     [grpc-byte-buffer->input-port (c:-> grpc-byte-buffer? input-port?)]))
 
-(define _grpc-byte-buffer _pointer)
-(define grpc-byte-buffer? cpointer?)
+(module* unsafe #f
+  (provide
+    (contract-out
+      [grpc-byte-buffer-pointer (c:-> grpc-byte-buffer? cpointer? )]
+      [pointer->grpc-byte-buffer (c:-> cpointer? grpc-byte-buffer?)])))
 
-
-(define grpc-raw-byte-buffer-create/ffi
-  (get-ffi-obj "grpc_raw_byte_buffer_create" lib-grpc
-    (_fun _grpc-slice-pointer _int -> _pointer)))
-(define (make-grpc-byte-buffer bytes)
-  (grpc-raw-byte-buffer-create/ffi
-    (grpc-slice-from-copied-buffer bytes)
-    1))
+(struct grpc-byte-buffer (pointer))
+(define-fun-syntax _grpc-byte-buffer
+  (syntax-id-rules (_grpc-byte-buffer)
+    [_grpc-byte-buffer (type: _pointer pre: (x => (grpc-byte-buffer-pointer x)))]))
 
 (define grpc-byte-buffer-destroy
   (get-ffi-obj "grpc_byte_buffer_destroy" lib-grpc
-    (_fun _grpc-byte-buffer -> _void)))
+    (_fun _pointer -> _void)))
+(define grpc-raw-byte-buffer-create/ffi
+  (get-ffi-obj "grpc_raw_byte_buffer_create" lib-grpc
+    (_fun _grpc-slice-pointer _int -> _pointer)))
+(define make-grpc-byte-buffer
+  (let ([raw
+          ((allocator grpc-byte-buffer-destroy)
+           grpc-raw-byte-buffer-create/ffi)])
+    (lambda (bytes) (grpc-byte-buffer (raw (grpc-slice-from-copied-buffer bytes) 1)))))
 
-(define-cstruct _grpc-byte-buffer-reader
+(define (pointer->grpc-byte-buffer pointer)
+  (register-finalizer pointer grpc-byte-buffer-destroy)
+  (grpc-byte-buffer pointer))
+
+(define-cstruct _grpc-byte-buffer-reader/ffi
   ([buffer-in _pointer]
    [buffer-out _pointer]
    [current _uint]))
 
+(define (make-grpc-byte-buffer-reader byte-buffer)
+  (define reader (make-grpc-byte-buffer-reader/ffi #f #f 0))
+  (grpc-byte-buffer-reader-init reader byte-buffer)
+  reader)
+
+(define grpc-byte-buffer-reader-destroy
+  (get-ffi-obj "grpc_byte_buffer_reader_destroy" lib-grpc
+    (_fun _grpc-byte-buffer-reader/ffi-pointer -> _void)))
+
 (define grpc-byte-buffer-reader-init
-  (get-ffi-obj "grpc_byte_buffer_reader_init" lib-grpc
-    (_fun _grpc-byte-buffer-reader-pointer _grpc-byte-buffer -> _void)))
+  ((allocator grpc-byte-buffer-reader-destroy)
+   (get-ffi-obj "grpc_byte_buffer_reader_init" lib-grpc
+     (_fun _grpc-byte-buffer-reader/ffi-pointer _grpc-byte-buffer -> _void))))
+
 
 (define grpc-byte-buffer-reader-next
   (let ([raw ((allocator grpc-slice-unref)
               (get-ffi-obj "grpc_byte_buffer_reader_next" lib-grpc
-                (_fun _grpc-byte-buffer-reader-pointer (slice : (_ptr o _grpc-slice/ffi))
+                (_fun _grpc-byte-buffer-reader/ffi-pointer (slice : (_ptr o _grpc-slice/ffi))
                       -> (out : _bool)
                       -> (and out slice))))])
     (lambda (buffer) (let ([v (raw buffer)]) (and v (grpc-slice v))))))
 
-(define grpc-byte-buffer-reader-destroy
-  (get-ffi-obj "grpc_byte_buffer_reader_destroy" lib-grpc
-    (_fun _grpc-byte-buffer-reader-pointer -> _void)))
-
-;; TODO(endobson) add an allocator to ensure correct cleanup
 ;; TODO(endobson) make this thread safe
 (define (grpc-byte-buffer->input-port buffer)
-  (define reader (ptr-ref (malloc _grpc-byte-buffer-reader) _grpc-byte-buffer-reader))
-  (grpc-byte-buffer-reader-init reader buffer)
+  (define reader (make-grpc-byte-buffer-reader buffer))
   (define location-in-slice 0)
   (define slice #f)
   (define (read-next-slice!)
     (set! slice (grpc-byte-buffer-reader-next reader))
-    (set! location-in-slice 0)
-    (unless slice
-      (grpc-byte-buffer-reader-destroy reader)
-      (grpc-byte-buffer-destroy buffer)))
+    (set! location-in-slice 0))
   (read-next-slice!)
 
   (make-input-port

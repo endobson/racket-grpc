@@ -40,6 +40,7 @@ racket_library(
     srcs = ["call.rkt"],
     deps = [
         ":base-lib",
+        ":byte-buffer",
         ":completion-queue",
         ":channel",
         ":slice",

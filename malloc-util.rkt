@@ -14,7 +14,6 @@
 (provide
   call-with-malloc
   call-with-malloc-grpc-metadata-array
-  call-with-malloc-grpc-byte-buffer
   malloc-struct)
 
 (define (call-with-malloc _ctype fun #:cast [_cast-type #f])
@@ -44,8 +43,3 @@
       (grpc-metadata-array-init metadata)
       (fun metadata)
       (grpc-metadata-array-destroy metadata))))
-
-(define (call-with-malloc-grpc-byte-buffer bytes fun)
-  (define buffer (make-grpc-byte-buffer bytes))
-  (fun buffer)
-  (grpc-byte-buffer-destroy buffer))

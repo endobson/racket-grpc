@@ -118,8 +118,6 @@
                      #:cond send-initial-metadata #:send-initial-metadata 0 #f
                      #:cond send-message-buffer #:send-message send-message-buffer
                      #:cond status #:send-status-from-server 0 #f 0 #f))))
-             (when send-message-buffer
-               (grpc-byte-buffer-destroy send-message-buffer))
              (unless status
                (loop 'after-metadata))])))))
 
