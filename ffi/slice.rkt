@@ -11,19 +11,22 @@
 (provide
   (contract-out
     [grpc-slice? predicate/c]
-;    [make-empty-grpc-slice (c:-> grpc-slice?)]
+    [immobile-grpc-slice? predicate/c]
     [grpc-slice-from-copied-buffer (c:-> bytes? grpc-slice?)]
     [grpc-slice-length (c:-> grpc-slice? exact-nonnegative-integer?)]
     [grpc-slice->bytes (c:-> grpc-slice? bytes?)]
     [grpc-slice->bytes!
       (c:-> bytes? exact-nonnegative-integer? grpc-slice? exact-nonnegative-integer?
-            exact-nonnegative-integer?)]))
+            exact-nonnegative-integer?)]
+    ;; For use in functions that need slices for long term responses.
+    [make-immobile-grpc-slice (c:-> grpc-slice?)]))
 
 (module* unsafe #f
   (provide
     _grpc-slice ;; fun-syntax
     _grpc-slice-pointer ;; fun-syntax
     (contract-out
+      [_immobile-grpc-slice-pointer ctype?]
       ;; For use in functions that return reffed slices.
       [_grpc-slice/ffi ctype?]
       [grpc-slice-unref (c:-> grpc-slice/ffi? void?)]
@@ -42,12 +45,17 @@
    [data (_union _grpc-slice-refcounted _grpc-slice-inlined)]))
 
 (struct grpc-slice (pointer))
+(struct immobile-grpc-slice grpc-slice ())
 (define-fun-syntax _grpc-slice
   (syntax-id-rules (_grpc-slice)
     [_grpc-slice (type: _grpc-slice/ffi pre: (x => (grpc-slice-pointer x)))]))
 (define-fun-syntax _grpc-slice-pointer
   (syntax-id-rules (_grpc-slice-pointer)
     [_grpc-slice-pointer (type: _grpc-slice/ffi-pointer pre: (x => (grpc-slice-pointer x)))]))
+(define _immobile-grpc-slice-pointer
+  (make-ctype _grpc-slice/ffi-pointer
+    grpc-slice-pointer
+    (lambda (x) (error '_immobile-grpc-slice-pointer "Cannot make values"))))
 
 (define grpc-slice-unref
   (get-ffi-obj "grpc_slice_unref" lib-grpc
@@ -105,3 +113,13 @@
   (if (grpc-slice/ffi-refcount ffi-slice)
       (grpc-slice-refcounted-length (union-ref (grpc-slice/ffi-data ffi-slice) 0))
       (grpc-slice-inlined-length (union-ref (grpc-slice/ffi-data ffi-slice) 1))))
+
+(define (make-immobile-grpc-slice)
+  (define slice
+    (ptr-ref (malloc _grpc-slice/ffi 'atomic-interior) _grpc-slice/ffi))
+  (set-grpc-slice/ffi-refcount! slice #f)
+  (set-grpc-slice-inlined-length!
+    (union-ref (grpc-slice/ffi-data slice) 1)
+    0)
+  (register-finalizer slice grpc-slice-unref)
+  (immobile-grpc-slice slice))

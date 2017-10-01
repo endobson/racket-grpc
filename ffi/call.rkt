@@ -36,7 +36,7 @@
     [set-grpc-send-status-from-server-trailing-metadata! (c:-> grpc-send-status-from-server? cpointer? void?)]
     [set-grpc-send-status-from-server-status! (c:-> grpc-send-status-from-server? grpc-status-code? void?)]
     [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? grpc-slice? void?)]
-    [make-grpc-recv-status-on-client (c:-> cpointer? cpointer? cpointer? grpc-recv-status-on-client?)]
+    [make-grpc-recv-status-on-client (c:-> cpointer? cpointer? immobile-grpc-slice? grpc-recv-status-on-client?)]
     [grpc-call-start-batch (c:-> grpc-call? cvector? any/c evt?)]))
 
 (define _grpc-call _pointer)
@@ -132,7 +132,7 @@
   ([trailing-metadata _grpc-metadata-array-pointer]
    [status _pointer]
    ;; This should be a pointer to a grpc-slice
-   [status-details _pointer]))
+   [status-details _immobile-grpc-slice-pointer]))
 
 (define-cstruct _grpc-recv-close-on-server
   ([cancelled _pointer]))

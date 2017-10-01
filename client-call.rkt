@@ -54,14 +54,14 @@
     (define payload-pointer (malloc _pointer 'atomic-interior))
     (define trailers-pointer (ptr-ref (malloc _grpc-metadata-array 'atomic-interior) _grpc-metadata-array))
     (define status-code-pointer (malloc _int 'atomic-interior))
-    (define status-details-pointer (ptr-ref (malloc _grpc-slice/ffi 'atomic-interior) _grpc-slice/ffi))
+    (define status-details-pointer (make-immobile-grpc-slice))
 
     (sync
       (let ([grpc-recv-status
              (make-grpc-recv-status-on-client
-                         trailers-pointer
-                         status-code-pointer
-                         status-details-pointer)])
+               trailers-pointer
+               status-code-pointer
+               status-details-pointer)])
          (grpc-call-start-batch call
            (grpc-op-batch
              #:recv-message payload-pointer

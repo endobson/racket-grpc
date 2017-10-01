@@ -10,7 +10,8 @@
   racket/place
   (rename-in
     racket/contract
-    [-> c:->]))
+    [-> c:->]
+    [->* c:->*]))
 
 (provide
   (contract-out
@@ -22,7 +23,7 @@
   (provide
     _grpc-completion-queue ;; fun-syntax
     (contract-out
-      [make-grpc-completion-queue-tag (c:-> (values cpointer? evt?))])))
+      [make-grpc-completion-queue-tag (c:->* () #:rest (listof any/c) (values cpointer? evt?))])))
 
 ;; Completion events
 (define _grpc-completion-type
