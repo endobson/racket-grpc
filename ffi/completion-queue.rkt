@@ -91,7 +91,7 @@
           ['shutdown (void)]
           [(list success pointer)
            (match (ptr-ref pointer _racket)
-             [(vector sema success-box)
+             [(vector sema success-box _)
               (free-immobile-cell pointer)
               (set-box! success-box success)
               (semaphore-post sema)])
@@ -99,14 +99,18 @@
   cq)
 
 ;; All tags passed to completion queue apis must come from this.
-;; The first argument should be passed to the foregin function, and the second is an 'evt?'
+;;
+;; The arguments will be referenced until the event has returned.
+;; This allows for holding onto memory that is being read/written to by the call.
+;;
+;; The first return value should be passed to the foregin function, and the second is an 'evt?'
 ;; that will be ready once the underlying event has happened. The return value of the event is
 ;; true if the op was successful.
-(define (make-grpc-completion-queue-tag)
+(define (make-grpc-completion-queue-tag . refs)
   (define sema (make-semaphore))
   (define b (box 'unset))
   (values
-    (malloc-immobile-cell (vector sema b))
+    (malloc-immobile-cell (vector sema b refs))
     (wrap-evt
       (semaphore-peek-evt sema)
       (lambda (evt) (unbox b)))))
