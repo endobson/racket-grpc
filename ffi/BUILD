@@ -43,6 +43,7 @@ racket_library(
         ":byte-buffer",
         ":completion-queue",
         ":channel",
+        ":immobile-pointers",
         ":slice",
     ]
 )
@@ -99,6 +100,11 @@ racket_test(
     deps = [
         ":completion-queue-test",
     ]
+)
+
+racket_library(
+    name = "immobile-pointers",
+    srcs = ["immobile-pointers.rkt"],
 )
 
 racket_library(

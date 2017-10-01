@@ -15,6 +15,7 @@ racket_library(
     deps = [
         "//ffi:lib",
         "//ffi:call",
+        "//ffi:immobile-pointers",
         ":grpc-op-batch",
         ":malloc-util",
     ],

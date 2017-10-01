@@ -6,6 +6,7 @@
   "ffi/lib.rkt"
   "ffi/timespec.rkt"
   "ffi/call.rkt"
+  "ffi/immobile-pointers.rkt"
   "ffi/channel.rkt"
   "ffi/completion-queue.rkt"
   "ffi/byte-buffer.rkt"
@@ -53,7 +54,7 @@
   (define (recv-message)
     (define payload-pointer (malloc _pointer 'atomic-interior))
     (define trailers-pointer (ptr-ref (malloc _grpc-metadata-array 'atomic-interior) _grpc-metadata-array))
-    (define status-code-pointer (malloc _int 'atomic-interior))
+    (define status-code-pointer (make-immobile-int))
     (define status-details-pointer (make-immobile-grpc-slice))
 
     (sync
@@ -68,7 +69,7 @@
              #:recv-status-on-client grpc-recv-status)
            (list payload-pointer trailers-pointer status-code-pointer status-details-pointer))))
 
-    (define status-code (ptr-ref status-code-pointer _int))
+    (define status-code (immobile-int-ref status-code-pointer))
     (if (zero? status-code)
         (let ([payload (ptr-ref payload-pointer _pointer)])
           (if payload
