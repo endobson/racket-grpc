@@ -2,7 +2,6 @@
 
 (require
   "grpc-op-batch.rkt"
-  "malloc-util.rkt"
   "ffi/lib.rkt"
   "ffi/timespec.rkt"
   "ffi/call.rkt"
@@ -10,18 +9,14 @@
   "ffi/channel.rkt"
   "ffi/completion-queue.rkt"
   "ffi/byte-buffer.rkt"
-  (submod "ffi/byte-buffer.rkt" unsafe)
   "ffi/metadata-array.rkt"
   "ffi/slice.rkt"
-  (submod "ffi/slice.rkt" unsafe)
   racket/port
   racket/promise
   racket/match
-  ffi/unsafe
   (rename-in
     racket/contract
     [-> c:->]))
-
 
 (provide
   (contract-out
