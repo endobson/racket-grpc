@@ -44,6 +44,7 @@ racket_library(
         ":completion-queue",
         ":channel",
         ":immobile-pointers",
+        ":metadata-array",
         ":slice",
     ]
 )
@@ -115,6 +116,15 @@ racket_library(
         ":call",
         ":completion-queue",
         ":timespec",
+        ":metadata-array",
+    ]
+)
+
+racket_library(
+    name = "metadata-array",
+    srcs = ["metadata-array.rkt"],
+    deps = [
+        ":base-lib",
     ]
 )
 

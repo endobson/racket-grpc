@@ -105,7 +105,7 @@
 (define _immobile-indirect-grpc-byte-buffer
   (make-ctype _pointer
     immobile-indirect-grpc-byte-buffer-pointer
-    (lambda (x) (error '_grpc-immobile-indirect-grpc-byte-buffer "Cannot make values"))))
+    (lambda (x) (error '_immobile-indirect-grpc-byte-buffer "Cannot make values"))))
 
 (define (make-immobile-indirect-grpc-byte-buffer)
   (define p (malloc _pointer 'atomic-interior))

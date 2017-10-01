@@ -9,6 +9,8 @@
   (submod "completion-queue.rkt" unsafe)
   "immobile-pointers.rkt"
   (submod "immobile-pointers.rkt" unsafe)
+  "metadata-array.rkt"
+  (submod "metadata-array.rkt" unsafe)
   "slice.rkt"
   (submod "slice.rkt" unsafe)
   "timespec.rkt"
@@ -23,8 +25,6 @@
   (contract-out
     [grpc-channel-create-call
       (c:-> grpc-channel? grpc-call? grpc-completion-queue? bytes? gpr-timespec? grpc-call?)]
-    [_grpc-metadata-array ctype?]
-    [_grpc-metadata-array-pointer ctype?]
     [_grpc-op ctype?]
     [set-grpc-op-op! (c:-> grpc-op? grpc-op-type? void?)]
     [set-grpc-op-flags! (c:-> grpc-op? exact-nonnegative-integer? void?)]
@@ -38,7 +38,7 @@
     [set-grpc-send-status-from-server-trailing-metadata! (c:-> grpc-send-status-from-server? cpointer? void?)]
     [set-grpc-send-status-from-server-status! (c:-> grpc-send-status-from-server? grpc-status-code? void?)]
     [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? grpc-slice? void?)]
-    [make-grpc-recv-status-on-client (c:-> cpointer? immobile-int? immobile-grpc-slice? grpc-recv-status-on-client?)]
+    [make-grpc-recv-status-on-client (c:-> immobile-grpc-metadata-array? immobile-int? immobile-grpc-slice? grpc-recv-status-on-client?)]
     [grpc-call-start-batch (c:-> grpc-call? cvector? any/c evt?)]))
 
 (define _grpc-call _pointer)
@@ -98,11 +98,6 @@
     'recv-status-on-client
     'recv-close-on-server))
 
-(define-cstruct _grpc-metadata-array
-  ([count _size]
-   [capacity _size]
-   [metadata _pointer]))
-
 
 (define-cstruct _grpc-send-initial-metadata-maybe-compression-level
   ([is-set _uint8]
@@ -124,11 +119,11 @@
    [status-details _pointer]))
 
 ;; grpc_metadata_array *recv-initial-metadata;
-(define _grpc-recv-initial-metadata _grpc-metadata-array-pointer)
+(define _grpc-recv-initial-metadata _immobile-grpc-metadata-array)
 ;; grpc_byte_buffer **recv-message;
 (define _grpc-recv-message _immobile-indirect-grpc-byte-buffer)
 (define-cstruct _grpc-recv-status-on-client
-  ([trailing-metadata _grpc-metadata-array-pointer]
+  ([trailing-metadata _immobile-grpc-metadata-array]
    [status _immobile-int]
    ;; This should be a pointer to a grpc-slice
    [status-details _immobile-grpc-slice-pointer]))

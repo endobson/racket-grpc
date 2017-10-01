@@ -4,6 +4,7 @@
   "base-lib.rkt"
   "call.rkt"
   "completion-queue.rkt"
+  (submod "metadata-array.rkt" unsafe)
   "timespec.rkt"
   (submod "timespec.rkt" unsafe)
   racket/format
@@ -15,18 +16,8 @@
 (provide (all-defined-out))
 
 
-(define _grpc-metadata _pointer)
 (define _grpc-call _pointer)
 (define _size_t _int64)
-
-
-(define grpc-metadata-array-init
-  (get-ffi-obj "grpc_metadata_array_init" lib-grpc
-    (_fun _grpc-metadata-array-pointer -> _void)))
-
-(define grpc-metadata-array-destroy
-  (get-ffi-obj "grpc_metadata_array_destroy" lib-grpc
-    (_fun _grpc-metadata-array-pointer -> _void)))
 
 (define grpc-server-create
   (get-ffi-obj "grpc_server_create" lib-grpc
@@ -72,7 +63,7 @@
       _pointer ;; server
       _pointer ;; call
       _grpc-call-details-pointer ;; call_details
-      _grpc-metadata-array-pointer ;; request_metadata
+      _immobile-grpc-metadata-array ;; request_metadata
       _pointer ;; call completion queue
       _pointer ;; notification completion queue
       _pointer ;; tag

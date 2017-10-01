@@ -13,7 +13,6 @@
 
 (provide
   call-with-malloc
-  call-with-malloc-grpc-metadata-array
   malloc-struct)
 
 (define (call-with-malloc _ctype fun #:cast [_cast-type #f])
@@ -36,10 +35,3 @@
          (define pointer (malloc-struct _ctype))
          (fun pointer)
          (free pointer)))))
-
-(define (call-with-malloc-grpc-metadata-array fun)
-  (call-with-malloc-struct _grpc-metadata-array
-    (λ (metadata)
-      (grpc-metadata-array-init metadata)
-      (fun metadata)
-      (grpc-metadata-array-destroy metadata))))

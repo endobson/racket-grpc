@@ -11,6 +11,7 @@
   "ffi/completion-queue.rkt"
   "ffi/byte-buffer.rkt"
   (submod "ffi/byte-buffer.rkt" unsafe)
+  "ffi/metadata-array.rkt"
   "ffi/slice.rkt"
   (submod "ffi/slice.rkt" unsafe)
   racket/port
@@ -39,21 +40,20 @@
   (define call (grpc-channel-create-call chan #f cq method gpr-deadline))
 
   (define (send-message)
-    (call-with-malloc-grpc-metadata-array
-      (λ (recv-metadata)
-        (define buffer (make-grpc-byte-buffer request))
-        (sync
-          (grpc-call-start-batch call
-            (grpc-op-batch
-               #:send-initial-metadata 0 #f
-               #:send-message buffer
-               #:send-close-from-client
-               #:recv-initial-metadata recv-metadata)
-            (list buffer recv-metadata))))))
+    (define recv-metadata (make-immobile-grpc-metadata-array))
+    (define buffer (make-grpc-byte-buffer request))
+    (sync
+      (grpc-call-start-batch call
+        (grpc-op-batch
+           #:send-initial-metadata 0 #f
+           #:send-message buffer
+           #:send-close-from-client
+           #:recv-initial-metadata recv-metadata)
+        (list buffer recv-metadata))))
 
   (define (recv-message)
     (define payload-pointer (make-immobile-indirect-grpc-byte-buffer))
-    (define trailers-pointer (ptr-ref (malloc _grpc-metadata-array 'atomic-interior) _grpc-metadata-array))
+    (define trailers-pointer (make-immobile-grpc-metadata-array))
     (define status-code-pointer (make-immobile-int))
     (define status-details-pointer (make-immobile-grpc-slice))
 

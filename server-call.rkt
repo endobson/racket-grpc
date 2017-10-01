@@ -9,6 +9,7 @@
   "ffi/byte-buffer.rkt"
   "ffi/lib.rkt"
   "ffi/slice.rkt"
+  "ffi/metadata-array.rkt"
   "ffi/call.rkt"
   ffi/unsafe
   racket/promise
@@ -29,7 +30,7 @@
   ([call _pointer]
    [payload _pointer]
    [details _grpc-call-details]
-   [metadata _grpc-metadata-array]
+   
    [cancelled _int]))
 
 
@@ -46,8 +47,7 @@
   (set-grpc-call-details-host! details #f)
   (set-grpc-call-details-host-capacity! details 0)
   (define deadline (grpc-call-details-deadline details))
-  (define metadata (server-context-metadata ctx))
-  (grpc-metadata-array-init metadata)
+  (define metadata (make-immobile-grpc-metadata-array))
 
   (define sema (make-semaphore))
 

@@ -8,6 +8,8 @@
   "ffi/timespec.rkt"
   "ffi/call.rkt"
   "ffi/byte-buffer.rkt"
+  "ffi/metadata-array.rkt"
+  (submod "ffi/metadata-array.rkt" unsafe)
   "time/time.rkt"
   racket/async-channel
   racket/port
@@ -18,7 +20,7 @@
 
 
 (define-cstruct _recv-status
-  ([trailers _grpc-metadata-array]
+  ([trailers _immobile-grpc-metadata-array]
    [code _int]
    [details _string]
    [details-capacity _size_t]))
@@ -29,13 +31,11 @@
 
   (define call (grpc-channel-create-call chan cq method "localhost" deadline))
 
-  (define recv-metadata (malloc-struct _grpc-metadata-array))
-  (grpc-metadata-array-init recv-metadata)
+  (define recv-metadata (make-immobile-grpc-metadata-array))
 
   (define send-message-buffer (make-grpc-byte-buffer #"\x08\x00\x10\x12"))
 
   (define recv-status (malloc-struct _recv-status))
-  (grpc-metadata-array-init (recv-status-trailers recv-status))
   (set-recv-status-code! recv-status 0)
   (set-recv-status-details! recv-status #f)
   (set-recv-status-details-capacity! recv-status 0)
