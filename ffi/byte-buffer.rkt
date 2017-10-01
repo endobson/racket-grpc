@@ -6,6 +6,7 @@
   (submod "slice.rkt" unsafe)
   ffi/unsafe
   ffi/unsafe/alloc
+  ffi/unsafe/atomic
   (rename-in
     racket/contract
     [-> c:->]))
@@ -14,18 +15,24 @@
   (contract-out
     [grpc-byte-buffer? predicate/c]
     [make-grpc-byte-buffer (c:-> bytes? grpc-byte-buffer?)]
-    [grpc-byte-buffer->input-port (c:-> grpc-byte-buffer? input-port?)]))
+    [grpc-byte-buffer->input-port (c:-> grpc-byte-buffer? input-port?)]
+    [immobile-indirect-grpc-byte-buffer? predicate/c]
+    [make-immobile-indirect-grpc-byte-buffer (c:-> immobile-indirect-grpc-byte-buffer?)]
+    [immobile-indirect-grpc-byte-buffer-ref
+      (c:-> immobile-indirect-grpc-byte-buffer?  grpc-byte-buffer?)]))
 
 (module* unsafe #f
   (provide
     (contract-out
-      [grpc-byte-buffer-pointer (c:-> grpc-byte-buffer? cpointer? )]
-      [pointer->grpc-byte-buffer (c:-> cpointer? grpc-byte-buffer?)])))
+      [_grpc-byte-buffer ctype?]
+      [_immobile-indirect-grpc-byte-buffer ctype?])))
 
 (struct grpc-byte-buffer (pointer))
-(define-fun-syntax _grpc-byte-buffer
-  (syntax-id-rules (_grpc-byte-buffer)
-    [_grpc-byte-buffer (type: _pointer pre: (x => (grpc-byte-buffer-pointer x)))]))
+(define _grpc-byte-buffer
+  (make-ctype _pointer
+    grpc-byte-buffer-pointer
+    (lambda (x) (error '_grpc-send-message "Cannot make values"))))
+
 
 (define grpc-byte-buffer-destroy
   (get-ffi-obj "grpc_byte_buffer_destroy" lib-grpc
@@ -38,10 +45,6 @@
           ((allocator grpc-byte-buffer-destroy)
            grpc-raw-byte-buffer-create/ffi)])
     (lambda (bytes) (grpc-byte-buffer (raw (grpc-slice-from-copied-buffer bytes) 1)))))
-
-(define (pointer->grpc-byte-buffer pointer)
-  (register-finalizer pointer grpc-byte-buffer-destroy)
-  (grpc-byte-buffer pointer))
 
 (define-cstruct _grpc-byte-buffer-reader/ffi
   ([buffer-in _pointer]
@@ -96,3 +99,41 @@
     (lambda ()
       (void))))
 
+;; This holds pointer to a possibly null byte-buffer pointer.
+(struct immobile-indirect-grpc-byte-buffer (pointer owned-box))
+
+(define _immobile-indirect-grpc-byte-buffer
+  (make-ctype _pointer
+    immobile-indirect-grpc-byte-buffer-pointer
+    (lambda (x) (error '_grpc-immobile-indirect-grpc-byte-buffer "Cannot make values"))))
+
+(define (make-immobile-indirect-grpc-byte-buffer)
+  (define p (malloc _pointer 'atomic-interior))
+  (define owned-box (box #t))
+  (register-finalizer p
+    (lambda (p)
+      (call-as-atomic
+        (lambda ()
+          (when (unbox owned-box)
+            (define byte-buffer (ptr-ref p _pointer))
+            (when byte-buffer
+              (grpc-byte-buffer-destroy byte-buffer)))))))
+  (immobile-indirect-grpc-byte-buffer p owned-box))
+
+(define (immobile-indirect-grpc-byte-buffer-ref imm)
+  (define v
+    (call-as-atomic
+      (lambda ()
+        (define box (immobile-indirect-grpc-byte-buffer-owned-box imm))
+        (if (unbox box)
+            (let ()
+              (set-box! box #f)
+              (define p (ptr-ref (immobile-indirect-grpc-byte-buffer-pointer imm) _pointer))
+              (and p
+                   (let ()
+                     (register-finalizer p grpc-byte-buffer-destroy)
+                     (grpc-byte-buffer p))))
+            'double-ref))))
+  (if (eq? v 'double-ref)
+      (error 'immobile-indirect-grpc-byte-buffer-ref "Cannot extract the buffer twice.")
+      v))

@@ -114,10 +114,7 @@
    [maybe-compression _grpc-send-initial-metadata-maybe-compression-level]))
 
 ;; grpc_byte_buffer *send_message
-(define _grpc-send-message
-  (make-ctype _pointer
-    grpc-byte-buffer-pointer
-    (lambda (x) (error '_grpc-send-message "Cannot make values"))))
+(define _grpc-send-message _grpc-byte-buffer)
 
 (define-cstruct _grpc-send-status-from-server
   ([trailing-metadata-count _size]
@@ -129,7 +126,7 @@
 ;; grpc_metadata_array *recv-initial-metadata;
 (define _grpc-recv-initial-metadata _grpc-metadata-array-pointer)
 ;; grpc_byte_buffer **recv-message;
-(define _grpc-recv-message _pointer)
+(define _grpc-recv-message _immobile-indirect-grpc-byte-buffer)
 (define-cstruct _grpc-recv-status-on-client
   ([trailing-metadata _grpc-metadata-array-pointer]
    [status _immobile-int]

@@ -52,7 +52,7 @@
             (list buffer recv-metadata))))))
 
   (define (recv-message)
-    (define payload-pointer (malloc _pointer 'atomic-interior))
+    (define payload-pointer (make-immobile-indirect-grpc-byte-buffer))
     (define trailers-pointer (ptr-ref (malloc _grpc-metadata-array 'atomic-interior) _grpc-metadata-array))
     (define status-code-pointer (make-immobile-int))
     (define status-details-pointer (make-immobile-grpc-slice))
@@ -71,9 +71,9 @@
 
     (define status-code (immobile-int-ref status-code-pointer))
     (if (zero? status-code)
-        (let ([payload (ptr-ref payload-pointer _pointer)])
+        (let ([payload (immobile-indirect-grpc-byte-buffer-ref payload-pointer)])
           (if payload
-              (port->bytes (grpc-byte-buffer->input-port (pointer->grpc-byte-buffer payload)))
+              (port->bytes (grpc-byte-buffer->input-port payload))
               (error 'rpc "No message received")))
         (error 'rpc "Error: ~a ~s" status-code (grpc-slice->bytes status-details-pointer))))
 
