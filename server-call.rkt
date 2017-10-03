@@ -7,7 +7,7 @@
   "status.rkt"
   "malloc-util.rkt"
   "ffi/byte-buffer.rkt"
-  "ffi/lib.rkt"
+  (submod "ffi/server.rkt" unsafe)
   "ffi/slice.rkt"
   "ffi/metadata-array.rkt"
   "ffi/call.rkt"

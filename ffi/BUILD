@@ -109,22 +109,21 @@ racket_library(
 )
 
 racket_library(
-    name = "lib",
-    srcs = ["lib.rkt"],
-    deps = [
-        ":base-lib",
-        ":call",
-        ":completion-queue",
-        ":timespec",
-        ":metadata-array",
-    ]
-)
-
-racket_library(
     name = "metadata-array",
     srcs = ["metadata-array.rkt"],
     deps = [
         ":base-lib",
+    ]
+)
+
+racket_library(
+    name = "server",
+    srcs = ["server.rkt"],
+    deps = [
+        ":base-lib",
+        ":completion-queue",
+        ":timespec",
+        ":metadata-array",
     ]
 )
 

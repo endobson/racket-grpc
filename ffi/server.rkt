@@ -2,22 +2,36 @@
 
 (require
   "base-lib.rkt"
-  "call.rkt"
-  "completion-queue.rkt"
-  (submod "metadata-array.rkt" unsafe)
   "timespec.rkt"
   (submod "timespec.rkt" unsafe)
-  racket/format
-  racket/place
+  "completion-queue.rkt"
+  (submod "completion-queue.rkt" unsafe)
+  "metadata-array.rkt"
+  (submod "metadata-array.rkt" unsafe)
   ffi/unsafe
-  ffi/cvector
-  ffi/unsafe/cvector
-  racket/list)
-(provide (all-defined-out))
+  ffi/unsafe/alloc
+  (rename-in
+    racket/contract
+    [-> c:->]))
 
+(module* unsafe #f
+  (provide
+    (contract-out
+      [_grpc-call-details ctype?]
+      [grpc-call-details-method any/c]
+      [set-grpc-call-details-method! any/c]
+      [set-grpc-call-details-method-capacity! any/c]
+      [grpc-call-details-host any/c]
+      [set-grpc-call-details-host! any/c]
+      [set-grpc-call-details-host-capacity! any/c]
+      [grpc-call-details-deadline any/c]
+      [grpc-server-request-call any/c]
+      [grpc-call-unref any/c]
+      [grpc-server-create any/c]
+      [grpc-server-register-completion-queue any/c]
+      [grpc-server-add-insecure-http2-port any/c]
+      [grpc-server-start any/c])))
 
-(define _grpc-call _pointer)
-(define _size_t _int64)
 
 (define grpc-server-create
   (get-ffi-obj "grpc_server_create" lib-grpc
@@ -35,25 +49,11 @@
   (get-ffi-obj "grpc_server_register_method" lib-grpc
     (_fun _pointer _string _string -> _pointer)))
 
-;(define grpc-server-request-registered-call
-;  (get-ffi-obj "grpc_server_request_registered_call" lib-grpc
-;    (_fun
-;      _pointer ;; server
-;      _pointer ;; registered method
-;      _pointer ;; call
-;      _gpr-timespec-pointer ;; deadline
-;      _grpc-metadata-array-pointer ;; request_metadata
-;      _pointer ;; request payload
-;      _pointer ;; call completion queue
-;      _pointer ;; notification completion queue
-;      _pointer ;; tag
-;      -> _int)))
-
 (define-cstruct _grpc-call-details
   ([method _pointer]
-   [method-capacity _size_t]
+   [method-capacity _size]
    [host _pointer]
-   [host-capacity _size_t]
+   [host-capacity _size]
    [deadline _gpr-timespec]))
 
 

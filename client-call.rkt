@@ -2,7 +2,6 @@
 
 (require
   "grpc-op-batch.rkt"
-  "ffi/lib.rkt"
   "ffi/timespec.rkt"
   "ffi/call.rkt"
   "ffi/immobile-pointers.rkt"

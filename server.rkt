@@ -5,7 +5,7 @@
   "timestamp.rkt"
   "grpc-op-batch.rkt"
   "status.rkt"
-  "ffi/lib.rkt"
+  (submod "ffi/server.rkt" unsafe)
   "ffi/completion-queue.rkt"
   "ffi/byte-buffer.rkt"
   racket/port

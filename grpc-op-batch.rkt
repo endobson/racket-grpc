@@ -7,7 +7,6 @@
     syntax/parse)
 
   "ffi/call.rkt"
-  "ffi/lib.rkt"
   ffi/unsafe
   ffi/unsafe/cvector
   racket/list)

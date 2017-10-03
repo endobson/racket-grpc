@@ -21,7 +21,6 @@ racket_library(
     srcs = ["hello-world-client.rkt"],
     deps = [
         "//:client-call",
-        "//ffi:lib",
         "//ffi:channel",
         "//ffi:completion-queue",
     ]

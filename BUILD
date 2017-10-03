@@ -13,7 +13,6 @@ racket_library(
     name = "client-call",
     srcs = ["client-call.rkt"],
     deps = [
-        "//ffi:lib",
         "//ffi:call",
         "//ffi:immobile-pointers",
         ":grpc-op-batch",
@@ -26,7 +25,6 @@ racket_library(
     srcs = ["grpc-op-batch.rkt"],
     deps = [
         "//ffi:call",
-        "//ffi:lib",
     ],
 )
 
@@ -36,7 +34,6 @@ racket_library(
     deps = [
         "//ffi:byte-buffer",
         "//ffi:call",
-        "//ffi:lib",
         "//ffi:slice",
     ],
 )
@@ -44,9 +41,6 @@ racket_library(
 racket_library(
     name = "return-box",
     srcs = ["return-box.rkt"],
-    deps = [
-        "//ffi:lib",
-    ],
 )
 
 racket_library(
@@ -58,8 +52,8 @@ racket_library(
         ":return-box",
         ":status",
         ":malloc-util",
-        "//ffi:lib",
         "//ffi:call",
+        "//ffi:server",
     ],
 )
 
@@ -75,7 +69,6 @@ racket_library(
     name = "server",
     srcs = ["server.rkt"],
     deps = [
-        "//ffi:lib",
         ":server-call",
         ":timestamp",
         ":grpc-op-batch",
