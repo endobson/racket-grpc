@@ -10,9 +10,15 @@
   (submod "metadata-array.rkt" unsafe)
   ffi/unsafe
   ffi/unsafe/alloc
+  racket/match
   (rename-in
     racket/contract
     [-> c:->]))
+
+(provide
+  (contract-out
+    [make-grpc-server (c:-> grpc-completion-queue? (listof grpc-server-port?) grpc-server?)]
+    [grpc-server-insecure-http2-port (c:-> (and/c immutable? string?) grpc-server-port?)]))
 
 (module* unsafe #f
   (provide
@@ -32,10 +38,36 @@
       [grpc-server-add-insecure-http2-port any/c]
       [grpc-server-start any/c])))
 
+(struct grpc-server-port ())
+(struct grpc-server-insecure-http2-port grpc-server-port (address))
+(struct grpc-server (pointer cq))
+
+(define (make-grpc-server cq ports)
+  (define server
+    (((allocator (lambda (s) (grpc-server-shutdown-process s cq)))
+      (lambda (cq)
+        (define server (grpc-server-create #f #f))
+        (grpc-server-register-completion-queue server cq #f)
+        server)) cq))
+
+  (for ([port (in-list ports)])
+    (match port
+      [(grpc-server-insecure-http2-port address)
+       (grpc-server-add-insecure-http2-port server address)]))
+  (grpc-server-start server)
+  (grpc-server server cq))
+
+;; This cleans up the server by sending it a shutdown and then destroying it.
+(define (grpc-server-shutdown-process server cq)
+  (define-values (tag evt) (make-grpc-completion-queue-tag server))
+  (grpc-server-shutdown-and-notify server cq tag)
+  ;; Once the tag is posted server will stop being held and the next finalizer will run
+  (register-finalizer server grpc-server-destroy))
+
 
 (define grpc-server-create
   (get-ffi-obj "grpc_server_create" lib-grpc
-    (_fun _pointer -> _pointer)))
+    (_fun _pointer _pointer -> _pointer)))
 
 (define grpc-server-add-insecure-http2-port
   (get-ffi-obj "grpc_server_add_insecure_http2_port" lib-grpc
@@ -75,5 +107,12 @@
 
 (define grpc-server-register-completion-queue
   (get-ffi-obj "grpc_server_register_completion_queue" lib-grpc
-    (_fun _pointer _pointer -> _void)))
+    (_fun _pointer _grpc-completion-queue _pointer -> _void)))
 
+(define grpc-server-shutdown-and-notify
+  (get-ffi-obj "grpc_server_shutdown_and_notify" lib-grpc
+    (_fun _pointer _grpc-completion-queue _pointer -> _void)))
+
+(define grpc-server-destroy
+  (get-ffi-obj "grpc_server_destroy" lib-grpc
+    (_fun _pointer -> _void)))

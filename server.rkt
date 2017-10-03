@@ -5,6 +5,7 @@
   "timestamp.rkt"
   "grpc-op-batch.rkt"
   "status.rkt"
+  "ffi/server.rkt"
   (submod "ffi/server.rkt" unsafe)
   "ffi/completion-queue.rkt"
   "ffi/byte-buffer.rkt"
@@ -31,25 +32,14 @@
 
 
 (define (start-server config)
-  (define server (grpc-server-create #f))
   (define cq (make-grpc-completion-queue))
 
-  (grpc-server-register-completion-queue server cq)
-  (for ([address (server-config-addresses config)])
-    (grpc-server-add-insecure-http2-port server address))
+  (define server
+    (make-grpc-server
+      cq
+      (map grpc-server-insecure-http2-port (server-config-addresses config))))
 
-  (grpc-server-start server)
-
-  (define methods
-    (for/hash ([(k v) (in-hash (server-config-methods config))])
-      (values
-        (string->immutable-string k)
-        v)))
-
-
-
-  (define (server-fun input)
-    (port->bytes input))
+  (define methods (server-config-methods config))
 
   (let loop ()
     (define server-call (request-server-call server cq))
