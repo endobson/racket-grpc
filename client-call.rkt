@@ -22,14 +22,23 @@
   (contract-out
     [make-client-stub
       (c:-> grpc-channel? (and/c immutable? bytes?) grpc-completion-queue? client-stub?)]
-    [client-stub-call (c:-> client-stub? bytes? (promise/c bytes?))]))
+    [client-stub-call (c:-> client-stub? bytes? bytes?)]))
 
 (struct client-stub (chan method cq))
+(struct client-call (raw promise)
+  #:property prop:evt 1)
+
+(define (client-call-force call)
+  (force (client-call-promise call)))
 
 (define (make-client-stub chan method cq)
   (client-stub chan method cq))
 
 (define (client-stub-call stub request #:deadline [deadline #f])
+  (client-call-force (client-async-stub-call stub request #:deadline deadline)))
+
+
+(define (client-async-stub-call stub request #:deadline [deadline #f])
   (define gpr-deadline (or deadline (gpr-infinite-future 'realtime)))
   (match-define (client-stub chan method cq) stub)
   (define call (grpc-channel-create-call chan #f cq method gpr-deadline))
@@ -72,6 +81,8 @@
               (error 'rpc "No message received")))
         (error 'rpc "Error: ~a ~s" status-code (grpc-slice->bytes status-details-pointer))))
 
-  (delay/thread
-    (send-message)
-    (recv-message)))
+  (client-call
+    call
+    (delay/thread
+      (send-message)
+      (recv-message))))
