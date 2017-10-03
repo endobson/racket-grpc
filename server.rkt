@@ -12,12 +12,23 @@
   racket/async-channel
   racket/match
   ffi/unsafe
-  racket/list)
+  racket/list
+  (rename-in
+    racket/contract
+    [-> c:->]))
+
+(provide
+  (contract-out
+    [server-config
+      (c:-> (hash/c (and/c string? immutable?) (c:-> any/c any) #:immutable #t)
+            (listof (and/c string? immutable?))
+            server-config?)]
+    [start-server (c:-> server-config? none/c)]))
 
 (struct server-config
         (methods addresses))
 
-(provide start-server server-config)
+
 
 (define (start-server config)
   (define server (grpc-server-create #f))
