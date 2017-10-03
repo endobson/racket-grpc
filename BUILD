@@ -22,27 +22,6 @@ racket_library(
 )
 
 racket_library(
-    name = "client",
-    srcs = ["client.rkt"],
-    deps = [
-        "//ffi:lib",
-        "//ffi:call",
-        ":grpc-op-batch",
-        ":malloc-util",
-    ],
-)
-
-racket_library(
-    name = "continuous-client",
-    srcs = ["continuous-client.rkt"],
-    deps = [
-        "//ffi:lib",
-        "//ffi:channel",
-        ":client",
-    ],
-)
-
-racket_library(
     name = "grpc-op-batch",
     srcs = ["grpc-op-batch.rkt"],
     deps = [
@@ -67,16 +46,6 @@ racket_library(
     srcs = ["return-box.rkt"],
     deps = [
         "//ffi:lib",
-    ],
-)
-
-racket_library(
-    name = "serial-client",
-    srcs = ["serial-client.rkt"],
-    deps = [
-        ":client",
-        "//ffi:lib",
-        "//ffi:channel",
     ],
 )
 
