@@ -2,6 +2,7 @@
 
 (require
   "base-lib.rkt"
+  "with-reachable.rkt"
   ffi/unsafe
   ffi/unsafe/alloc
   (rename-in
@@ -69,50 +70,56 @@
 
 (define (grpc-slice->bytes slice)
   (define ffi-slice (grpc-slice-pointer slice))
-  (define-values (length start)
-    (if (grpc-slice/ffi-refcount ffi-slice)
-        (let ([data (union-ref (grpc-slice/ffi-data ffi-slice) 0)])
-          (values
-            (grpc-slice-refcounted-length data)
-            (grpc-slice-refcounted-bytes data)))
-        (let ([data (union-ref (grpc-slice/ffi-data ffi-slice) 1)])
-          (values
-            (grpc-slice-inlined-length data)
-            (array-ptr (grpc-slice-inlined-bytes data))))))
-  (define bytes (make-bytes length))
-  (memmove bytes start length)
-  bytes)
+  (with-reachable ffi-slice
+    (lambda ()
+      (define-values (length start)
+        (if (grpc-slice/ffi-refcount ffi-slice)
+            (let ([data (union-ref (grpc-slice/ffi-data ffi-slice) 0)])
+              (values
+                (grpc-slice-refcounted-length data)
+                (grpc-slice-refcounted-bytes data)))
+            (let ([data (union-ref (grpc-slice/ffi-data ffi-slice) 1)])
+              (values
+                (grpc-slice-inlined-length data)
+                (array-ptr (grpc-slice-inlined-bytes data))))))
+      (define bytes (make-bytes length))
+      (memmove bytes start length)
+      bytes)))
 
 (define (grpc-slice->bytes! bytes-dest dest-start slice-src slice-start)
   (define ffi-slice (grpc-slice-pointer slice-src))
-  (define-values (length slice-pointer)
-    (if (grpc-slice/ffi-refcount ffi-slice)
-        (let ([data (union-ref (grpc-slice/ffi-data ffi-slice) 0)])
-          (values
-            (grpc-slice-refcounted-length data)
-            (grpc-slice-refcounted-bytes data)))
-        (let ([data (union-ref (grpc-slice/ffi-data ffi-slice) 1)])
-          (values
-            (grpc-slice-inlined-length data)
-            (array-ptr (grpc-slice-inlined-bytes data))))))
-  (define copy-amount
-    (max
-      (min
-        (- (bytes-length bytes-dest) dest-start)
-        (- length slice-start))
-      0))
+  (with-reachable ffi-slice
+    (lambda ()
+      (define-values (length slice-pointer)
+        (if (grpc-slice/ffi-refcount ffi-slice)
+            (let ([data (union-ref (grpc-slice/ffi-data ffi-slice) 0)])
+              (values
+                (grpc-slice-refcounted-length data)
+                (grpc-slice-refcounted-bytes data)))
+            (let ([data (union-ref (grpc-slice/ffi-data ffi-slice) 1)])
+              (values
+                (grpc-slice-inlined-length data)
+                (array-ptr (grpc-slice-inlined-bytes data))))))
+      (define copy-amount
+        (max
+          (min
+            (- (bytes-length bytes-dest) dest-start)
+            (- length slice-start))
+          0))
 
-  (memmove
-    (ptr-add bytes-dest dest-start)
-    (ptr-add slice-pointer slice-start)
-    copy-amount)
-  copy-amount)
+      (memmove
+        (ptr-add bytes-dest dest-start)
+        (ptr-add slice-pointer slice-start)
+        copy-amount)
+      copy-amount)))
 
 (define (grpc-slice-length slice)
   (define ffi-slice (grpc-slice-pointer slice))
-  (if (grpc-slice/ffi-refcount ffi-slice)
-      (grpc-slice-refcounted-length (union-ref (grpc-slice/ffi-data ffi-slice) 0))
-      (grpc-slice-inlined-length (union-ref (grpc-slice/ffi-data ffi-slice) 1))))
+  (with-reachable ffi-slice
+    (lambda ()
+    (if (grpc-slice/ffi-refcount ffi-slice)
+        (grpc-slice-refcounted-length (union-ref (grpc-slice/ffi-data ffi-slice) 0))
+        (grpc-slice-inlined-length (union-ref (grpc-slice/ffi-data ffi-slice) 1))))))
 
 (define (make-immobile-grpc-slice)
   (define slice
