@@ -34,7 +34,7 @@
 (define-cstruct _grpc-event
   ([type _grpc-completion-type]
    [success _bool]
-   [value _pointer]))
+   [value (_fun _bool -> _void)]))
 
 ;; Completion queues
 (struct grpc-completion-queue (pointer))
@@ -75,43 +75,48 @@
         (define result (grpc-completion-queue-next cq (gpr-infinite-future 'monotonic)))
         (case (grpc-event-type result)
           [(shutdown)
-           (place-channel-put pch 'shutdown)
            (grpc-completion-queue-destroy cq)]
           [(timeout) (loop)]
           [(op-complete)
-           (place-channel-put
-             pch
-             (list (grpc-event-success result)
-                   (grpc-event-value result)))
+           ;; The value is a racket callback that goes back to the original place
+           ((grpc-event-value result) (grpc-event-success result))
            (loop)]))))
   (place-channel-put blocking-place (grpc-completion-queue-pointer cq))
-  (thread
-    (lambda ()
-      (let loop ()
-        (match (sync blocking-place)
-          ['shutdown (void)]
-          [(list success pointer)
-           (match (ptr-ref pointer _racket)
-             [(vector sema success-box _)
-              (free-immobile-cell pointer)
-              (set-box! success-box success)
-              (semaphore-post sema)])
-           (loop)]))))
   cq)
+
+(define _completion-queue-callback
+  (_fun #:async-apply (lambda (t) (t)) _bool -> _void))
 
 ;; All tags passed to completion queue apis must come from this.
 ;;
 ;; The arguments will be referenced until the event has returned.
 ;; This allows for holding onto memory that is being read/written to by the call.
 ;;
-;; The first return value should be passed to the foregin function, and the second is an 'evt?'
+;; The first return value should be passed to the foreign function, and the second is an 'evt?'
 ;; that will be ready once the underlying event has happened. The return value of the event is
 ;; true if the op was successful.
 (define (make-grpc-completion-queue-tag . refs)
   (define sema (make-semaphore))
-  (define b (box 'unset))
+  ;; This makes sure that the refs stay reachable until the callback is called.
+  (define b (box refs))
+  (define t
+    (thread
+      (lambda ()
+        (set-box! b (thread-receive))
+        (semaphore-post sema))))
+
+  ;; The immobile cell ensures that the function pointer is reachable until the callback is called
+  (define immobile-cell (malloc-immobile-cell #f))
+  (define (callback success)
+    (free-immobile-cell immobile-cell)
+    (thread-send t success)
+    (void))
+
+  (define fp (function-ptr callback _completion-queue-callback))
+  (ptr-set! immobile-cell _racket fp)
+
   (values
-    (malloc-immobile-cell (vector sema b refs))
+    fp
     (wrap-evt
       (semaphore-peek-evt sema)
       (lambda (evt) (unbox b)))))

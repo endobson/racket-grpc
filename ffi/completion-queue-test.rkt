@@ -11,6 +11,7 @@
 
   (define cq (make-grpc-completion-queue))
   (define alarm (grpc-alarm-create cq now))
+  (sync alarm)
 
 
   (define one-second-from-now
