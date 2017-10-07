@@ -23,7 +23,9 @@
   (provide
     _grpc-completion-queue ;; fun-syntax
     (contract-out
-      [make-grpc-completion-queue-tag (c:->* () #:rest (listof any/c) (values cpointer? evt?))])))
+      [_grpc-completion-queue-tag ctype?]
+      [make-grpc-completion-queue-tag
+        (c:->* (grpc-completion-queue?) #:rest (listof any/c) (values cpointer? evt?))])))
 
 ;; Completion events
 (define _grpc-completion-type
@@ -37,7 +39,7 @@
    [value (_fun _bool -> _void)]))
 
 ;; Completion queues
-(struct grpc-completion-queue (pointer))
+(struct grpc-completion-queue (pointer thread))
 (define-fun-syntax _grpc-completion-queue
   (syntax-id-rules (_grpc-completion-queue)
     [_grpc-completion-queue (type: _pointer pre: (x => (grpc-completion-queue-pointer x)))]))
@@ -84,7 +86,13 @@
            ((grpc-event-value result) (grpc-event-success result))
            (loop)]))))
   (place-channel-put blocking-place raw-cq)
-  (grpc-completion-queue raw-cq))
+  (define t
+    (thread
+      (lambda ()
+        (let loop ()
+          (semaphore-post (thread-receive))
+          (loop)))))
+  (grpc-completion-queue raw-cq t))
 
 (define _completion-queue-callback
   (_fun #:async-apply (lambda (t) (t)) _bool -> _void))
@@ -97,21 +105,19 @@
 ;; The first return value should be passed to the foreign function, and the second is an 'evt?'
 ;; that will be ready once the underlying event has happened. The return value of the event is
 ;; true if the op was successful.
-(define (make-grpc-completion-queue-tag . refs)
+(define (make-grpc-completion-queue-tag cq . refs)
   (define sema (make-semaphore))
   ;; This makes sure that the refs stay reachable until the callback is called.
   (define b (box refs))
-  (define t
-    (thread
-      (lambda ()
-        (set-box! b (thread-receive))
-        (semaphore-post sema))))
+
+  (define t (grpc-completion-queue-thread cq))
 
   ;; The immobile cell ensures that the function pointer is reachable until the callback is called
   (define immobile-cell (malloc-immobile-cell #f))
   (define (callback success)
     (free-immobile-cell immobile-cell)
-    (thread-send t success)
+    (set-box! b success)
+    (thread-send t sema)
     (void))
 
   (define fp (function-ptr callback _completion-queue-callback))
@@ -122,3 +128,5 @@
     (wrap-evt
       (semaphore-peek-evt sema)
       (lambda (evt) (unbox b)))))
+
+(define _grpc-completion-queue-tag _pointer)

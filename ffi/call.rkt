@@ -40,7 +40,7 @@
     [set-grpc-send-status-from-server-status! (c:-> grpc-send-status-from-server? grpc-status-code? void?)]
     [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? bytes? void?)]
     [make-grpc-recv-status-on-client (c:-> immobile-grpc-metadata-array? immobile-int? immobile-grpc-slice? grpc-recv-status-on-client?)]
-    [grpc-call-start-batch (c:-> grpc-call? cvector? any/c evt?)]))
+    [grpc-call-start-batch (c:-> grpc-call? grpc-completion-queue? cvector? any/c evt?)]))
 
 (define _grpc-call _pointer)
 (define grpc-call? cpointer?)
@@ -68,9 +68,10 @@
 
 (define grpc-call-start-batch/ffi
   (get-ffi-obj "grpc_call_start_batch" lib-grpc
-    (_fun _grpc-call (ops : _cvector) (_size = (cvector-length ops)) _pointer _pointer -> _grpc-call-error)))
-(define (grpc-call-start-batch call ops ref)
-  (define-values (tag evt) (make-grpc-completion-queue-tag ref))
+    (_fun _grpc-call (ops : _cvector) (_size = (cvector-length ops))
+          _grpc-completion-queue-tag _pointer -> _grpc-call-error)))
+(define (grpc-call-start-batch call cq ops ref)
+  (define-values (tag evt) (make-grpc-completion-queue-tag cq ref))
   (define status (grpc-call-start-batch/ffi call ops tag #f))
   (unless (zero? status)
     (free-immobile-cell tag)

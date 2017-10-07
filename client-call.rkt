@@ -48,7 +48,7 @@
     (define recv-metadata (make-immobile-grpc-metadata-array))
     (define buffer (make-grpc-byte-buffer request))
     (sync
-      (grpc-call-start-batch call
+      (grpc-call-start-batch call cq
         (grpc-op-batch
            #:send-initial-metadata 0 #f
            #:send-message buffer
@@ -68,7 +68,7 @@
                trailers-pointer
                status-code-pointer
                status-details-pointer)])
-         (grpc-call-start-batch call
+         (grpc-call-start-batch call cq
            (grpc-op-batch
              #:recv-message payload-pointer
              #:recv-status-on-client grpc-recv-status)

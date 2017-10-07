@@ -41,11 +41,11 @@
 
 (define grpc-alarm-set/ffi
   (get-ffi-obj "grpc_alarm_set" lib-grpc
-    (_fun _grpc-alarm _grpc-completion-queue _gpr-timespec _pointer _pointer -> _void)))
+    (_fun _grpc-alarm _grpc-completion-queue _gpr-timespec _grpc-completion-queue-tag _pointer -> _void)))
 
 (define (grpc-alarm-create cq timespec)
   (define alarm (grpc-alarm-alloc))
-  (define-values (tag evt) (make-grpc-completion-queue-tag))
+  (define-values (tag evt) (make-grpc-completion-queue-tag cq))
   (grpc-alarm-set/ffi alarm cq timespec tag #f)
   (grpc-alarm-evt evt alarm))
 
