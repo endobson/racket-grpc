@@ -5,7 +5,6 @@
   "slice.rkt"
   (submod "slice.rkt" unsafe)
   ffi/unsafe
-  ffi/unsafe/alloc
   ffi/unsafe/atomic
   racket/bytes
   racket/list
@@ -16,7 +15,6 @@
 (provide
   (contract-out
     [grpc-byte-buffer? predicate/c]
-    [make-grpc-byte-buffer (c:-> bytes? grpc-byte-buffer?)]
     [immobile-indirect-grpc-byte-buffer? predicate/c]))
 
 (module* unsafe #f
@@ -24,6 +22,8 @@
     (contract-out
       [_grpc-byte-buffer ctype?]
       [_immobile-indirect-grpc-byte-buffer ctype?]
+      [malloc-grpc-byte-buffer (c:-> bytes? grpc-byte-buffer?)]
+      [free-grpc-byte-buffer (c:-> grpc-byte-buffer? void)]
       [malloc-immobile-indirect-grpc-byte-buffer (c:-> immobile-indirect-grpc-byte-buffer?)]
       [consume-immobile-indirect-grpc-byte-buffer
         (c:-> immobile-indirect-grpc-byte-buffer? (or/c bytes? #f))])))
@@ -40,26 +40,22 @@
 (define grpc-raw-byte-buffer-create/ffi
   (get-ffi-obj "grpc_raw_byte_buffer_create" lib-grpc
     (_fun _grpc-slice-pointer/arg (_int = 1) -> _pointer)))
-(define make-grpc-byte-buffer
-  (let ([raw
-          ((allocator grpc-byte-buffer-destroy)
-           grpc-raw-byte-buffer-create/ffi)])
-    (lambda (bytes) (grpc-byte-buffer (raw bytes)))))
+(define (malloc-grpc-byte-buffer bytes)
+  (grpc-byte-buffer (grpc-raw-byte-buffer-create/ffi bytes)))
+(define (free-grpc-byte-buffer buffer)
+  (grpc-byte-buffer-destroy (grpc-byte-buffer-pointer buffer)))
+
 
 (define-cstruct _grpc-byte-buffer-reader/ffi
   ([buffer-in _pointer]
    [buffer-out _pointer]
    [current _uint]))
-
 (define grpc-byte-buffer-reader-destroy
   (get-ffi-obj "grpc_byte_buffer_reader_destroy" lib-grpc
     (_fun _grpc-byte-buffer-reader/ffi-pointer -> _void)))
-
 (define grpc-byte-buffer-reader-init
-  ((allocator grpc-byte-buffer-reader-destroy)
-   (get-ffi-obj "grpc_byte_buffer_reader_init" lib-grpc
-     (_fun _grpc-byte-buffer-reader/ffi-pointer _pointer -> _void))))
-
+  (get-ffi-obj "grpc_byte_buffer_reader_init" lib-grpc
+    (_fun _grpc-byte-buffer-reader/ffi-pointer _pointer -> _void)))
 
 (define grpc-byte-buffer-reader-next
   (get-ffi-obj "grpc_byte_buffer_reader_next" lib-grpc
@@ -68,9 +64,9 @@
           -> (success : _bool)
           -> (and success slice))))
 
-(define (grpc-byte-buffer->bytes buffer)
+(define (grpc-byte-buffer->bytes buffer-ptr)
   (define reader (make-grpc-byte-buffer-reader/ffi #f #f 0))
-  (grpc-byte-buffer-reader-init reader buffer)
+  (grpc-byte-buffer-reader-init reader buffer-ptr)
   (let loop ([acc empty])
     (define next-bytes (grpc-byte-buffer-reader-next reader))
     (if next-bytes

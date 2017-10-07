@@ -107,7 +107,7 @@
                    (and (eq? state 'before-metadata) (hash))))
 
              (define send-message-buffer
-               (and message (make-grpc-byte-buffer message)))
+               (and message (error 'broken))) ;(-grpc-byte-buffer message)))
 
              (set-return-box! rb 
                (delay/strict
