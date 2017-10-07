@@ -45,7 +45,7 @@
 
 (define (grpc-alarm-create cq timespec)
   (define alarm (grpc-alarm-alloc))
-  (define-values (tag evt) (make-grpc-completion-queue-tag cq))
+  (define-values (tag evt) (make-grpc-completion-queue-tag cq void))
   (grpc-alarm-set/ffi alarm cq timespec tag #f)
   (grpc-alarm-evt evt alarm))
 

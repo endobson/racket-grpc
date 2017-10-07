@@ -9,19 +9,17 @@
     racket/contract
     [-> c:->]))
 
-(provide
-  (contract-out
-    [immobile-grpc-slice? predicate/c]
-    [make-immobile-grpc-slice (c:-> immobile-grpc-slice?)]))
-
 (module* unsafe #f
   (provide
     _grpc-slice/arg ;; fun-syntax
     _grpc-slice-pointer/arg ;; fun-syntax
     _grpc-slice-pointer/output-arg ;; fun-syntax
     (contract-out
-      [_immobile-grpc-slice-pointer ctype?]
-      [_grpc-slice-pointer/return ctype?])))
+      [immobile-grpc-slice? predicate/c]
+      [malloc-immobile-grpc-slice (c:-> immobile-grpc-slice?)]
+      [free-immobile-grpc-slice (c:-> immobile-grpc-slice? void?)]
+      [immobile-grpc-slice->bytes (c:-> immobile-grpc-slice? bytes?)]
+      [_immobile-grpc-slice-pointer ctype?])))
 
 (define-cstruct _grpc-slice-refcounted
   ([bytes _pointer]
@@ -70,18 +68,6 @@
                   (grpc-slice->bytes x)
                   (grpc-slice-unref x))))]))
 
-(define _grpc-slice-pointer/return
-  (make-ctype _grpc-slice/ffi
-    (lambda (x) (error '_grpc-slice-pointer/return "Cannot make values"))
-    (lambda (x)
-      (unless (in-atomic-mode?)
-        (error '_grpc-slice/return "Must be in atomic mode"))
-      (and x
-        (begin0
-          (grpc-slice->bytes x)
-          (grpc-slice-unref x))))))
-
-
 (struct immobile-grpc-slice (pointer))
 (define _immobile-grpc-slice-pointer
   (make-ctype _grpc-slice/ffi-pointer
@@ -113,12 +99,15 @@
   (memmove bytes start length)
   bytes)
 
-(define (make-immobile-grpc-slice)
-  (define slice
-    (ptr-ref (malloc _grpc-slice/ffi 'atomic-interior) _grpc-slice/ffi))
-  (set-grpc-slice/ffi-refcount! slice #f)
-  (set-grpc-slice-inlined-length!
-    (union-ref (grpc-slice/ffi-data slice) 1)
-    0)
-  (register-finalizer slice grpc-slice-unref)
+(define (malloc-immobile-grpc-slice)
+  (define slice (ptr-ref (malloc _grpc-slice/ffi 'raw) _grpc-slice/ffi))
+  (memset slice 0 (ctype-sizeof _grpc-slice/ffi))
   (immobile-grpc-slice slice))
+
+(define (free-immobile-grpc-slice slice)
+  (define ptr (immobile-grpc-slice-pointer slice))
+  (grpc-slice-unref ptr)
+  (free ptr))
+
+(define (immobile-grpc-slice->bytes slice)
+  (grpc-slice->bytes (immobile-grpc-slice-pointer slice)))

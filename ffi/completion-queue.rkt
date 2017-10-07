@@ -10,8 +10,7 @@
   racket/place
   (rename-in
     racket/contract
-    [-> c:->]
-    [->* c:->*]))
+    [-> c:->]))
 
 (provide
   (contract-out
@@ -25,7 +24,7 @@
     (contract-out
       [_grpc-completion-queue-tag ctype?]
       [make-grpc-completion-queue-tag
-        (c:->* (grpc-completion-queue?) #:rest (listof any/c) (values cpointer? evt?))])))
+        (c:-> grpc-completion-queue? (c:-> boolean? void?) (values cpointer? evt?))])))
 
 ;; Completion events
 (define _grpc-completion-type
@@ -99,23 +98,22 @@
 
 ;; All tags passed to completion queue apis must come from this.
 ;;
-;; The arguments will be referenced until the event has returned.
-;; This allows for holding onto memory that is being read/written to by the call.
+;; The provided callback will be called in atomic mode when the tag is posted.
+;; It is passed #t if the op was successful.
 ;;
 ;; The first return value should be passed to the foreign function, and the second is an 'evt?'
 ;; that will be ready once the underlying event has happened. The return value of the event is
 ;; true if the op was successful.
-(define (make-grpc-completion-queue-tag cq . refs)
+(define (make-grpc-completion-queue-tag cq user-callback)
   (define sema (make-semaphore))
-  ;; This makes sure that the refs stay reachable until the callback is called.
-  (define b (box refs))
-
+  (define b (box 'unset))
   (define t (grpc-completion-queue-thread cq))
 
   ;; The immobile cell ensures that the function pointer is reachable until the callback is called
   (define immobile-cell (malloc-immobile-cell #f))
   (define (callback success)
     (free-immobile-cell immobile-cell)
+    (user-callback success)
     (set-box! b success)
     (thread-send t sema)
     (void))

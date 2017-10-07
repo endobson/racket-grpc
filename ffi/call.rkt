@@ -50,7 +50,7 @@
     [set-grpc-send-status-from-server-status! (c:-> grpc-send-status-from-server? grpc-status-code? void?)]
     [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? bytes? void?)]
     [make-grpc-recv-status-on-client (c:-> immobile-grpc-metadata-array? immobile-int? immobile-grpc-slice? grpc-recv-status-on-client?)]
-    [grpc-call-start-batch (c:-> grpc-call? grpc-completion-queue? cvector? any/c evt?)]
+    [grpc-call-start-batch (c:-> grpc-call? grpc-completion-queue? cvector? (c:-> boolean? void?) evt?)]
     [grpc-call-client-receive-unary (c:-> grpc-call? grpc-completion-queue? (promise/c bytes?))]))
 
 (define _grpc-call _pointer)
@@ -81,8 +81,8 @@
   (get-ffi-obj "grpc_call_start_batch" lib-grpc
     (_fun _grpc-call (ops : _cvector) (_size = (cvector-length ops))
           _grpc-completion-queue-tag _pointer -> _grpc-call-error)))
-(define (grpc-call-start-batch call cq ops ref)
-  (define-values (tag evt) (make-grpc-completion-queue-tag cq ref))
+(define (grpc-call-start-batch call cq ops callback)
+  (define-values (tag evt) (make-grpc-completion-queue-tag cq callback))
   (define status (grpc-call-start-batch/ffi call ops tag #f))
   (unless (zero? status)
     (free-immobile-cell tag)
@@ -249,35 +249,52 @@
             (set! index (add1 index))) ...
          ops-vector)]))
 
-
 (define (grpc-call-client-receive-unary call cq)
   (call-as-atomic
     (lambda ()
-      (define payload-pointer (make-immobile-indirect-grpc-byte-buffer))
-      (define trailers-pointer (make-immobile-grpc-metadata-array))
-      (define status-code-pointer (make-immobile-int))
-      (define status-details-pointer (make-immobile-grpc-slice))
+      ;; The raw pointers that are passed to grpc-core. These are freed by the parse-callback.
+      (define payload-pointer (malloc-immobile-indirect-grpc-byte-buffer))
+      (define trailers-pointer (malloc-immobile-grpc-metadata-array))
+      (define status-code-pointer (malloc-immobile-int))
+      (define status-details-pointer (malloc-immobile-grpc-slice))
+
+      ;; The safe racket values set by the parse-callback
+      (define status-code #f)
+      (define payload #f)
+      (define status-details #f)
+
+      (define (parse-callback success)
+        (when success
+          (set! status-code (immobile-int-ref status-code-pointer))
+          (unless (zero? status-code)
+            (set! status-details (immobile-grpc-slice->bytes status-details-pointer))))
+        ;; Always consume the possible payload as it cannot be freed seperately.
+        (set! payload
+          (consume-immobile-indirect-grpc-byte-buffer payload-pointer))
+        (free-immobile-int status-code-pointer)
+        (free-immobile-grpc-metadata-array trailers-pointer)
+        (free-immobile-grpc-slice status-details-pointer))
+
+      (define (read-status)
+        (if (zero? status-code)
+            (or payload (error 'rpc "No message received"))
+            (error 'rpc "Error: ~a ~s" status-code )))
 
       (define grpc-recv-status
         (make-grpc-recv-status-on-client
           trailers-pointer
           status-code-pointer
           status-details-pointer))
+      (define op-batch
+        (grpc-op-batch
+          #:recv-message payload-pointer
+          #:recv-status-on-client grpc-recv-status))
+
       (define evt
-        (grpc-call-start-batch call cq
-          (grpc-op-batch
-            #:recv-message payload-pointer
-            #:recv-status-on-client grpc-recv-status)
-          (list payload-pointer trailers-pointer status-code-pointer status-details-pointer)))
+        (grpc-call-start-batch call cq op-batch parse-callback))
 
       (delay/sync
         (unless (sync evt)
           (error 'unary-call "Error in call-batch"))
-        (define status-code (immobile-int-ref status-code-pointer))
-        (if (zero? status-code)
-            (let ([payload (immobile-indirect-grpc-byte-buffer-ref payload-pointer)])
-              (if payload
-                  (port->bytes (grpc-byte-buffer->input-port payload))
-                  (error 'rpc "No message received")))
-            (error 'rpc "Error: ~a ~s" status-code (ptr-ref status-details-pointer
-                                                            _grpc-slice-pointer/return)))))))
+        (read-status)))))
+

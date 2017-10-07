@@ -46,7 +46,7 @@
   (set-grpc-call-details-host! details #f)
   (set-grpc-call-details-host-capacity! details 0)
   (define deadline (grpc-call-details-deadline details))
-  (define metadata (make-immobile-grpc-metadata-array))
+  (define metadata (error 'broken)) ;(make-immobile-grpc-metadata-array))
 
   (define sema (make-semaphore))
 
@@ -86,7 +86,7 @@
               (when payload
                 (async-channel-put
                   recv-message-channel
-                  (port->bytes (grpc-byte-buffer->input-port payload)))
+                  (port->bytes (error 'broken)));(grpc-byte-buffer->input-port payload)))
                 (loop))))))))
 
   (define write-thread

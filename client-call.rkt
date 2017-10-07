@@ -8,6 +8,7 @@
   "ffi/completion-queue.rkt"
   "ffi/byte-buffer.rkt"
   "ffi/metadata-array.rkt"
+  (submod "ffi/metadata-array.rkt" unsafe)
   "ffi/slice.rkt"
   (submod "ffi/slice.rkt" unsafe)
   racket/port
@@ -44,7 +45,7 @@
   (define call (grpc-channel-create-call chan #f cq method gpr-deadline))
 
   (define (send-message)
-    (define recv-metadata (make-immobile-grpc-metadata-array))
+    (define recv-metadata (malloc-immobile-grpc-metadata-array))
     (define buffer (make-grpc-byte-buffer request))
     (sync
       (grpc-call-start-batch call cq
@@ -53,7 +54,8 @@
            #:send-message buffer
            #:send-close-from-client
            #:recv-initial-metadata recv-metadata)
-        (list buffer recv-metadata))))
+        (lambda (success)
+          (free-immobile-grpc-metadata-array recv-metadata)))))
 
   (client-call
     call

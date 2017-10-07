@@ -10,12 +10,13 @@
 
 (provide
   (contract-out
-    [immobile-grpc-metadata-array? predicate/c]
-    [make-immobile-grpc-metadata-array (c:-> immobile-grpc-metadata-array?)]))
+    [immobile-grpc-metadata-array? predicate/c]))
 
 (module* unsafe #f
   (provide
     (contract-out
+      [malloc-immobile-grpc-metadata-array (c:-> immobile-grpc-metadata-array?)]
+      [free-immobile-grpc-metadata-array (c:-> immobile-grpc-metadata-array? void?)]
       [_immobile-grpc-metadata-array ctype?])))
 
 (define-cstruct _grpc-metadata-array
@@ -38,8 +39,12 @@
   (get-ffi-obj "grpc_metadata_array_destroy" lib-grpc
     (_fun _grpc-metadata-array-pointer -> _void)))
 
-(define (make-immobile-grpc-metadata-array)
-  (define m (ptr-ref (malloc _grpc-metadata-array 'atomic-interior) _grpc-metadata-array))
-  (grpc-metadata-array-init m)
-  (register-finalizer m grpc-metadata-array-destroy)
-  (immobile-grpc-metadata-array m))
+(define (malloc-immobile-grpc-metadata-array)
+  (define p (ptr-ref (malloc _grpc-metadata-array 'raw) _grpc-metadata-array))
+  (grpc-metadata-array-init p)
+  (immobile-grpc-metadata-array p))
+
+(define (free-immobile-grpc-metadata-array m)
+  (define p (immobile-grpc-metadata-array-pointer m))
+  (grpc-metadata-array-destroy p)
+  (free p))
