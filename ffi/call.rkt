@@ -16,6 +16,7 @@
   "timespec.rkt"
   (submod "timespec.rkt" unsafe)
   ffi/unsafe
+  ffi/unsafe/atomic
   ffi/cvector
   (rename-in
     racket/contract
@@ -37,7 +38,7 @@
       (c:-> grpc-send-status-from-server? exact-nonnegative-integer? void?)]
     [set-grpc-send-status-from-server-trailing-metadata! (c:-> grpc-send-status-from-server? cpointer? void?)]
     [set-grpc-send-status-from-server-status! (c:-> grpc-send-status-from-server? grpc-status-code? void?)]
-    [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? grpc-slice? void?)]
+    [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? bytes? void?)]
     [make-grpc-recv-status-on-client (c:-> immobile-grpc-metadata-array? immobile-int? immobile-grpc-slice? grpc-recv-status-on-client?)]
     [grpc-call-start-batch (c:-> grpc-call? cvector? any/c evt?)]))
 
@@ -47,11 +48,12 @@
 (define grpc-channel-create-call/ffi
   (get-ffi-obj "grpc_channel_create_call" lib-grpc
     (_fun _grpc-channel _grpc-call _uint32 _grpc-completion-queue
-          _grpc-slice _pointer _gpr-timespec _pointer -> _grpc-call)))
+          _grpc-slice/arg _pointer _gpr-timespec _pointer -> _grpc-call)))
 
 (define (grpc-channel-create-call channel parent cq method deadline)
-  (define method-slice (grpc-slice-from-copied-buffer method))
-  (grpc-channel-create-call/ffi channel parent #xFF cq method-slice #f deadline #f))
+  (call-as-atomic
+    (lambda ()
+      (grpc-channel-create-call/ffi channel parent #xFF cq method #f deadline #f))))
 
 ;; TODO make this an enum
 (define _grpc-call-error _int)

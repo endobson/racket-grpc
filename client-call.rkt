@@ -10,9 +10,11 @@
   "ffi/byte-buffer.rkt"
   "ffi/metadata-array.rkt"
   "ffi/slice.rkt"
+  (submod "ffi/slice.rkt" unsafe)
   racket/port
   racket/promise
   racket/match
+  ffi/unsafe
   (rename-in
     racket/contract
     [-> c:->]))
@@ -78,7 +80,8 @@
           (if payload
               (port->bytes (grpc-byte-buffer->input-port payload))
               (error 'rpc "No message received")))
-        (error 'rpc "Error: ~a ~s" status-code (grpc-slice->bytes status-details-pointer))))
+        (error 'rpc "Error: ~a ~s" status-code (ptr-ref status-details-pointer
+                                                        _grpc-slice-pointer/return))))
 
   (client-call
     call

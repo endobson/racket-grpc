@@ -33,18 +33,17 @@
     grpc-byte-buffer-pointer
     (lambda (x) (error '_grpc-send-message "Cannot make values"))))
 
-
 (define grpc-byte-buffer-destroy
   (get-ffi-obj "grpc_byte_buffer_destroy" lib-grpc
     (_fun _pointer -> _void)))
 (define grpc-raw-byte-buffer-create/ffi
   (get-ffi-obj "grpc_raw_byte_buffer_create" lib-grpc
-    (_fun _grpc-slice-pointer _int -> _pointer)))
+    (_fun _grpc-slice-pointer/arg (_int = 1) -> _pointer)))
 (define make-grpc-byte-buffer
   (let ([raw
           ((allocator grpc-byte-buffer-destroy)
            grpc-raw-byte-buffer-create/ffi)])
-    (lambda (bytes) (grpc-byte-buffer (raw (grpc-slice-from-copied-buffer bytes) 1)))))
+    (lambda (bytes) (grpc-byte-buffer (raw bytes)))))
 
 (define-cstruct _grpc-byte-buffer-reader/ffi
   ([buffer-in _pointer]
@@ -67,32 +66,37 @@
 
 
 (define grpc-byte-buffer-reader-next
-  (let ([raw ((allocator grpc-slice-unref)
-              (get-ffi-obj "grpc_byte_buffer_reader_next" lib-grpc
-                (_fun _grpc-byte-buffer-reader/ffi-pointer (slice : (_ptr o _grpc-slice/ffi))
-                      -> (out : _bool)
-                      -> (and out slice))))])
-    (lambda (buffer) (let ([v (raw buffer)]) (and v (grpc-slice v))))))
+  (let ([raw (get-ffi-obj "grpc_byte_buffer_reader_next" lib-grpc
+               (_fun _grpc-byte-buffer-reader/ffi-pointer
+                     (slice : _grpc-slice-pointer/output-arg)
+                     -> (success : _bool)
+                     -> (and success slice)))])
+    (lambda (reader)
+      (call-as-atomic (lambda () (raw reader))))))
 
 ;; TODO(endobson) make this thread safe
 (define (grpc-byte-buffer->input-port buffer)
   (define reader (make-grpc-byte-buffer-reader buffer))
-  (define location-in-slice 0)
-  (define slice #f)
-  (define (read-next-slice!)
-    (set! slice (grpc-byte-buffer-reader-next reader))
-    (set! location-in-slice 0))
-  (read-next-slice!)
+  (define location 0)
+  (define local-bytes #f)
+  (define (read-next!)
+    (set! local-bytes (grpc-byte-buffer-reader-next reader))
+    (set! location 0))
+  (read-next!)
 
   (make-input-port
     'grpc-buffer
     (lambda (bytes)
-      (if slice
+      (if local-bytes
           (let ()
-            (define bytes-read (grpc-slice->bytes! bytes 0 slice location-in-slice))
-            (set! location-in-slice (+ location-in-slice bytes-read))
-            (when (= location-in-slice (grpc-slice-length slice))
-              (read-next-slice!))
+            (define new-location
+              (min (bytes-length local-bytes)
+                   (+ location (bytes-length bytes))))
+            (bytes-copy! bytes 0 local-bytes location new-location)
+            (define bytes-read (- new-location location))
+            (set! location new-location)
+            (when (= location (bytes-length local-bytes))
+              (read-next!))
             bytes-read)
           eof))
     #f

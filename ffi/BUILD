@@ -132,7 +132,6 @@ racket_library(
     srcs = ["slice.rkt"],
     deps = [
         ":base-lib",
-        ":with-reachable",
     ]
 )
 
@@ -143,9 +142,4 @@ racket_library(
         ":base-lib",
         "//time:time",
     ]
-)
-
-racket_library(
-    name = "with-reachable",
-    srcs = ["with-reachable.rkt"],
 )
