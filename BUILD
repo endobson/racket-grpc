@@ -15,16 +15,7 @@ racket_library(
     deps = [
         "//ffi:call",
         "//ffi:immobile-pointers",
-        ":grpc-op-batch",
         ":malloc-util",
-    ],
-)
-
-racket_library(
-    name = "grpc-op-batch",
-    srcs = ["grpc-op-batch.rkt"],
-    deps = [
-        "//ffi:call",
     ],
 )
 
@@ -47,7 +38,6 @@ racket_library(
     name = "server-call",
     srcs = ["server-call.rkt"],
     deps = [
-        ":grpc-op-batch",
         ":timestamp",
         ":return-box",
         ":status",
@@ -71,7 +61,6 @@ racket_library(
     deps = [
         ":server-call",
         ":timestamp",
-        ":grpc-op-batch",
         ":status",
     ],
 )

@@ -1,7 +1,6 @@
 #lang racket/base
 
 (require
-  "grpc-op-batch.rkt"
   "ffi/timespec.rkt"
   "ffi/call.rkt"
   "ffi/immobile-pointers.rkt"

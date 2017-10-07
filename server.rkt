@@ -3,7 +3,6 @@
 (require
   "server-call.rkt"
   "timestamp.rkt"
-  "grpc-op-batch.rkt"
   "status.rkt"
   "ffi/server.rkt"
   (submod "ffi/server.rkt" unsafe)

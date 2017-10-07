@@ -1,7 +1,6 @@
 #lang racket/base
 
 (require
-  "grpc-op-batch.rkt"
   "timestamp.rkt"
   "return-box.rkt"
   "status.rkt"
