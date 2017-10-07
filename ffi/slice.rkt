@@ -3,7 +3,6 @@
 (require
   "base-lib.rkt"
   ffi/unsafe
-  ffi/unsafe/alloc
   ffi/unsafe/atomic
   (rename-in
     racket/contract
@@ -79,10 +78,8 @@
     (_fun _grpc-slice/ffi -> _void)))
 
 (define grpc-slice-from-copied-buffer
-  (let ([raw ((allocator grpc-slice-unref)
-              (get-ffi-obj "grpc_slice_from_copied_buffer" lib-grpc
-                (_fun (b : _bytes) (_size = (bytes-length b)) -> _grpc-slice/ffi)))])
-    (lambda (bytes) (raw bytes))))
+  (get-ffi-obj "grpc_slice_from_copied_buffer" lib-grpc
+    (_fun (b : _bytes) (_size = (bytes-length b)) -> _grpc-slice/ffi)))
 
 (define (grpc-slice->bytes slice)
   (define-values (length start)

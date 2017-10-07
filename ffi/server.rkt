@@ -59,10 +59,12 @@
 
 ;; This cleans up the server by sending it a shutdown and then destroying it.
 (define (grpc-server-shutdown-process server cq)
-  (define-values (tag evt) (make-grpc-completion-queue-tag server))
+  (define-values (tag evt) (make-grpc-completion-queue-tag cq void))
   (grpc-server-shutdown-and-notify server cq tag)
   ;; Once the tag is posted server will stop being held and the next finalizer will run
-  (register-finalizer server grpc-server-destroy))
+  (thread
+    (sync evt)
+    (grpc-server-destroy server)))
 
 
 (define grpc-server-create
