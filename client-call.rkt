@@ -55,35 +55,8 @@
            #:recv-initial-metadata recv-metadata)
         (list buffer recv-metadata))))
 
-  (define (recv-message)
-    (define payload-pointer (make-immobile-indirect-grpc-byte-buffer))
-    (define trailers-pointer (make-immobile-grpc-metadata-array))
-    (define status-code-pointer (make-immobile-int))
-    (define status-details-pointer (make-immobile-grpc-slice))
-
-    (sync
-      (let ([grpc-recv-status
-             (make-grpc-recv-status-on-client
-               trailers-pointer
-               status-code-pointer
-               status-details-pointer)])
-         (grpc-call-start-batch call cq
-           (grpc-op-batch
-             #:recv-message payload-pointer
-             #:recv-status-on-client grpc-recv-status)
-           (list payload-pointer trailers-pointer status-code-pointer status-details-pointer))))
-
-    (define status-code (immobile-int-ref status-code-pointer))
-    (if (zero? status-code)
-        (let ([payload (immobile-indirect-grpc-byte-buffer-ref payload-pointer)])
-          (if payload
-              (port->bytes (grpc-byte-buffer->input-port payload))
-              (error 'rpc "No message received")))
-        (error 'rpc "Error: ~a ~s" status-code (ptr-ref status-details-pointer
-                                                        _grpc-slice-pointer/return))))
-
   (client-call
     call
     (delay/thread
       (send-message)
-      (recv-message))))
+      (force (grpc-call-client-receive-unary call cq)))))

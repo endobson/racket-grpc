@@ -7,6 +7,7 @@
     syntax/parse)
 
   "base-lib.rkt"
+  "byte-buffer.rkt"
   (submod "byte-buffer.rkt" unsafe)
   "channel.rkt"
   (submod "channel.rkt" unsafe)
@@ -24,6 +25,8 @@
   ffi/unsafe/cvector
   ffi/unsafe/atomic
   racket/list
+  racket/port
+  racket/promise
   (rename-in
     racket/contract
     [-> c:->]))
@@ -47,7 +50,8 @@
     [set-grpc-send-status-from-server-status! (c:-> grpc-send-status-from-server? grpc-status-code? void?)]
     [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? bytes? void?)]
     [make-grpc-recv-status-on-client (c:-> immobile-grpc-metadata-array? immobile-int? immobile-grpc-slice? grpc-recv-status-on-client?)]
-    [grpc-call-start-batch (c:-> grpc-call? grpc-completion-queue? cvector? any/c evt?)]))
+    [grpc-call-start-batch (c:-> grpc-call? grpc-completion-queue? cvector? any/c evt?)]
+    [grpc-call-client-receive-unary (c:-> grpc-call? grpc-completion-queue? (promise/c bytes?))]))
 
 (define _grpc-call _pointer)
 (define grpc-call? cpointer?)
@@ -244,3 +248,36 @@
             (ops.initialize op)
             (set! index (add1 index))) ...
          ops-vector)]))
+
+
+(define (grpc-call-client-receive-unary call cq)
+  (call-as-atomic
+    (lambda ()
+      (define payload-pointer (make-immobile-indirect-grpc-byte-buffer))
+      (define trailers-pointer (make-immobile-grpc-metadata-array))
+      (define status-code-pointer (make-immobile-int))
+      (define status-details-pointer (make-immobile-grpc-slice))
+
+      (define grpc-recv-status
+        (make-grpc-recv-status-on-client
+          trailers-pointer
+          status-code-pointer
+          status-details-pointer))
+      (define evt
+        (grpc-call-start-batch call cq
+          (grpc-op-batch
+            #:recv-message payload-pointer
+            #:recv-status-on-client grpc-recv-status)
+          (list payload-pointer trailers-pointer status-code-pointer status-details-pointer)))
+
+      (delay/sync
+        (unless (sync evt)
+          (error 'unary-call "Error in call-batch"))
+        (define status-code (immobile-int-ref status-code-pointer))
+        (if (zero? status-code)
+            (let ([payload (immobile-indirect-grpc-byte-buffer-ref payload-pointer)])
+              (if payload
+                  (port->bytes (grpc-byte-buffer->input-port payload))
+                  (error 'rpc "No message received")))
+            (error 'rpc "Error: ~a ~s" status-code (ptr-ref status-details-pointer
+                                                            _grpc-slice-pointer/return)))))))
