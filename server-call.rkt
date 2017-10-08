@@ -79,6 +79,8 @@
           (λ (payload-pointer)
             (let loop ()
               (sync
+                (error 'broken)
+                #;
                 (grpc-call-start-batch
                   grpc-call
                   (grpc-op-batch #:recv-message payload-pointer)))
@@ -111,6 +113,8 @@
 
              (set-return-box! rb 
                (delay/strict
+                 (error 'broken)
+                 #;
                  (grpc-call-start-batch
                    grpc-call
                    (grpc-op-batch

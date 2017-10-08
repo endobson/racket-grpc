@@ -27,6 +27,7 @@
   racket/list
   racket/port
   racket/promise
+  racket/match
   (rename-in
     racket/contract
     [-> c:->]))
@@ -35,37 +36,25 @@
   grpc-op-batch
   (contract-out
     [grpc-channel-create-call
-      (c:-> grpc-channel? grpc-call? grpc-completion-queue? bytes? gpr-timespec? grpc-call?)]
-    [_grpc-op ctype?]
-    [set-grpc-op-op! (c:-> grpc-op? grpc-op-type? void?)]
-    [set-grpc-op-flags! (c:-> grpc-op? exact-nonnegative-integer? void?)]
-    [set-grpc-op-reserved! (c:-> grpc-op? cpointer? void?)]
-    [grpc-op-data (c:-> grpc-op? union?)]
-    [set-grpc-send-initial-metadata-count!
-      (c:-> grpc-send-initial-metadata?  exact-nonnegative-integer? void?)]
-    [set-grpc-send-initial-metadata-metadata! (c:-> grpc-send-initial-metadata? cpointer? void?)]
-    [set-grpc-send-status-from-server-trailing-metadata-count!
-      (c:-> grpc-send-status-from-server? exact-nonnegative-integer? void?)]
-    [set-grpc-send-status-from-server-trailing-metadata! (c:-> grpc-send-status-from-server? cpointer? void?)]
-    [set-grpc-send-status-from-server-status! (c:-> grpc-send-status-from-server? grpc-status-code? void?)]
-    [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? bytes? void?)]
-    [make-grpc-recv-status-on-client (c:-> immobile-grpc-metadata-array? immobile-int? immobile-grpc-slice? grpc-recv-status-on-client?)]
-    [grpc-call-start-batch (c:-> grpc-call? grpc-completion-queue? cvector? (c:-> boolean? void?) evt?)]
-    [grpc-call-client-send-unary (c:-> grpc-call? grpc-completion-queue? bytes? void?)]
-    [grpc-call-client-receive-unary (c:-> grpc-call? grpc-completion-queue? (promise/c bytes?))]))
+      (c:-> grpc-channel? (or/c #f grpc-call?) grpc-completion-queue? bytes? gpr-timespec? grpc-call?)]
+    [grpc-call-client-send-unary (c:-> grpc-call? bytes? void?)]
+    [grpc-call-client-receive-unary (c:-> grpc-call? (promise/c bytes?))]))
 
-(define _grpc-call _pointer)
-(define grpc-call? cpointer?)
+(define _grpc-call/ffi _pointer)
+(struct grpc-call (pointer cq))
 
 (define grpc-channel-create-call/ffi
   (get-ffi-obj "grpc_channel_create_call" lib-grpc
-    (_fun _grpc-channel _grpc-call _uint32 _grpc-completion-queue
-          _grpc-slice/arg _pointer _gpr-timespec _pointer -> _grpc-call)))
+    (_fun _grpc-channel _grpc-call/ffi _uint32 _grpc-completion-queue
+          _grpc-slice/arg _pointer _gpr-timespec _pointer -> _grpc-call/ffi)))
 
 (define (grpc-channel-create-call channel parent cq method deadline)
   (call-as-atomic
     (lambda ()
-      (grpc-channel-create-call/ffi channel parent #xFF cq method #f deadline #f))))
+      (grpc-call
+        (grpc-channel-create-call/ffi
+          channel (and parent (grpc-call-pointer parent)) #xFF cq method #f deadline #f)
+        cq))))
 
 ;; TODO make this an enum
 (define _grpc-call-error _int)
@@ -80,11 +69,12 @@
 
 (define grpc-call-start-batch/ffi
   (get-ffi-obj "grpc_call_start_batch" lib-grpc
-    (_fun _grpc-call (ops : _cvector) (_size = (cvector-length ops))
+    (_fun _grpc-call/ffi (ops : _cvector) (_size = (cvector-length ops))
           _grpc-completion-queue-tag _pointer -> _grpc-call-error)))
-(define (grpc-call-start-batch call cq ops callback)
+(define (grpc-call-start-batch call ops callback)
+  (match-define (grpc-call call-ptr cq) call)
   (define-values (tag evt) (make-grpc-completion-queue-tag cq callback))
-  (define status (grpc-call-start-batch/ffi call ops tag #f))
+  (define status (grpc-call-start-batch/ffi call-ptr ops tag #f))
   (unless (zero? status)
     (free-immobile-cell tag)
     (error 'grpc-call-start-batch "Error: ~a" (grpc-call-error-to-string status)))
@@ -250,7 +240,7 @@
             (set! index (add1 index))) ...
          ops-vector)]))
 
-(define (grpc-call-client-receive-unary call cq)
+(define (grpc-call-client-receive-unary call)
   (call-as-atomic
     (lambda ()
       ;; The raw pointers that are passed to grpc-core. These are freed by the parse-callback.
@@ -291,21 +281,20 @@
           #:recv-message payload-pointer
           #:recv-status-on-client grpc-recv-status))
 
-      (define evt
-        (grpc-call-start-batch call cq op-batch parse-callback))
+      (define evt (grpc-call-start-batch call op-batch parse-callback))
 
       (delay/sync
         (unless (sync evt)
           (error 'unary-recv "Error in call-batch"))
         (read-status)))))
 
-(define (grpc-call-client-send-unary call cq request)
+(define (grpc-call-client-send-unary call request)
   (define evt
     (call-as-atomic
       (lambda ()
         (define recv-metadata (malloc-immobile-grpc-metadata-array))
         (define buffer (malloc-grpc-byte-buffer request))
-        (grpc-call-start-batch call cq
+        (grpc-call-start-batch call
           (grpc-op-batch
              #:send-initial-metadata 0 #f
              #:send-message buffer

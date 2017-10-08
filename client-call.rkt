@@ -46,5 +46,5 @@
   (client-call
     call
     (delay/thread
-      (grpc-call-client-send-unary call cq request)
-      (force (grpc-call-client-receive-unary call cq)))))
+      (grpc-call-client-send-unary call request)
+      (force (grpc-call-client-receive-unary call)))))
