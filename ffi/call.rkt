@@ -51,6 +51,7 @@
     [set-grpc-send-status-from-server-status-details! (c:-> grpc-send-status-from-server? bytes? void?)]
     [make-grpc-recv-status-on-client (c:-> immobile-grpc-metadata-array? immobile-int? immobile-grpc-slice? grpc-recv-status-on-client?)]
     [grpc-call-start-batch (c:-> grpc-call? grpc-completion-queue? cvector? (c:-> boolean? void?) evt?)]
+    [grpc-call-client-send-unary (c:-> grpc-call? grpc-completion-queue? bytes? void?)]
     [grpc-call-client-receive-unary (c:-> grpc-call? grpc-completion-queue? (promise/c bytes?))]))
 
 (define _grpc-call _pointer)
@@ -295,6 +296,23 @@
 
       (delay/sync
         (unless (sync evt)
-          (error 'unary-call "Error in call-batch"))
+          (error 'unary-recv "Error in call-batch"))
         (read-status)))))
 
+(define (grpc-call-client-send-unary call cq request)
+  (define evt
+    (call-as-atomic
+      (lambda ()
+        (define recv-metadata (malloc-immobile-grpc-metadata-array))
+        (define buffer (malloc-grpc-byte-buffer request))
+        (grpc-call-start-batch call cq
+          (grpc-op-batch
+             #:send-initial-metadata 0 #f
+             #:send-message buffer
+             #:send-close-from-client
+             #:recv-initial-metadata recv-metadata)
+          (lambda (success)
+            (free-immobile-grpc-metadata-array recv-metadata)
+            (free-grpc-byte-buffer buffer))))))
+  (unless (sync evt)
+    (error 'unary-send "Error in call-batch")))

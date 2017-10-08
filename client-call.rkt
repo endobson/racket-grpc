@@ -2,15 +2,12 @@
 
 (require
   "ffi/byte-buffer.rkt"
-  (submod "ffi/byte-buffer.rkt" unsafe)
   "ffi/call.rkt"
   "ffi/channel.rkt"
   "ffi/completion-queue.rkt"
   "ffi/immobile-pointers.rkt"
   "ffi/metadata-array.rkt"
-  (submod "ffi/metadata-array.rkt" unsafe)
   "ffi/slice.rkt"
-  (submod "ffi/slice.rkt" unsafe)
   "ffi/timespec.rkt"
   racket/port
   racket/promise
@@ -46,25 +43,8 @@
   (match-define (client-stub chan method cq) stub)
   (define call (grpc-channel-create-call chan #f cq method gpr-deadline))
 
-  (define (send-message)
-    (define recv-metadata (malloc-immobile-grpc-metadata-array))
-    (define buffer
-      (call-as-atomic
-        (lambda ()
-          (malloc-grpc-byte-buffer request))))
-    (sync
-      (grpc-call-start-batch call cq
-        (grpc-op-batch
-           #:send-initial-metadata 0 #f
-           #:send-message buffer
-           #:send-close-from-client
-           #:recv-initial-metadata recv-metadata)
-        (lambda (success)
-          (free-immobile-grpc-metadata-array recv-metadata)
-          (free-grpc-byte-buffer buffer)))))
-
   (client-call
     call
     (delay/thread
-      (send-message)
+      (grpc-call-client-send-unary call cq request)
       (force (grpc-call-client-receive-unary call cq)))))
